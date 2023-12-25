@@ -9,7 +9,15 @@
 ### Installation
 
 Download and symlink script
-  `Symlink: ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh`
+
+```bash
+curl -sSL -o ~/.scripts/night_light2.sh  https://raw.githubusercontent.com/tmiland/night_light.sh/main/night_light2.sh
+```
+
+Symlink:
+  ```bash
+   ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
+  ```
   Now use `$ night_ligh 3000` to set temp based on values:
   
   ```bash
