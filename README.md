@@ -1,4 +1,4 @@
-# night_ligh.sh
+# night_light.sh
  Automatic night light script for gnome
 
 ## Script to adjust night light in gnome
