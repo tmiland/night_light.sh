@@ -18,8 +18,12 @@ Symlink:
   ```bash
    ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
   ```
-  Now use `$ night_ligh 3000` to set temp based on values:
-  
+  Now use 
+  ```bash
+  $ night_ligh <value>
+  ```
+  to set temp based on values:
+
   ```bash
   1000 — Lowest value (super warm/red)
   4000 — Default night light on temperature
@@ -29,9 +33,27 @@ Symlink:
   ```
   Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
   
-- Turn on/off with `night_light -le true/false`
-- Or install with crontab `contab -e` and add to new line `@hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1`
+- Turn on/off with 
+
+```bash
+night_light -le true/false
+```
+
+  - Or install with crontab `contab -e` and add to new line
+```bash
+@hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1
+```
 
 ## Credits
 
 - Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
+
+#### Disclaimer 
+
+*** ***Use at own risk*** ***
+
+### License
+
+[![MIT License Image](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/MIT_logo.svg/220px-MIT_logo.svg.png)](https://github.com/tmiland/night_light.sh/blob/master/LICENSE)
+
+[MIT License](https://github.com/tmiland/night_light.sh/blob/master/LICENSE)
