@@ -32,12 +32,19 @@ Symlink:
   10000 — Highest value (super cool/blue)
   ```
   Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
-  
-- Turn on/off with 
 
 ```bash
-night_light -le true/false
+Usage: [options]
+
+If called without arguments, uses 24 hour clock.
+
+ --24hour            | -24           use 24 hour clock
+ --12hour            | -12           use 12 hour clock
+ --light-enabled     | -le           turn on/off (true/false)
+ --light-temperature | -lt           show light-temperature
+
 ```
+
 
   - Or install with crontab `contab -e` and add to new line
 ```bash
