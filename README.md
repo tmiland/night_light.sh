@@ -11,7 +11,7 @@
 Download and symlink script
 
 ```bash
-curl -sSL -o ~/.scripts/night_light2.sh  https://raw.githubusercontent.com/tmiland/night_light.sh/main/night_light.sh
+curl -sSL -o ~/.scripts/night_light.sh  https://raw.githubusercontent.com/tmiland/night_light.sh/main/night_light.sh
 ```
 
 Symlink:
