@@ -65,9 +65,10 @@ usage() {
   echo
   echo "  If called without arguments, uses 24 hour clock."
   echo
-  printf "  --24hour         | -24           use 24 hour clock\\n"
-  printf "  --12hour         | -12           use 12 hour clock\\n"
-  printf "  --light-enabled  | -le           turn on/off (true/false)\\n"
+  printf "  --24hour            | -24           use 24 hour clock\\n"
+  printf "  --12hour            | -12           use 12 hour clock\\n"
+  printf "  --light-enabled     | -le           turn on/off (true/false)\\n"
+  printf "  --light-temperature | -lt           show light-temperature"
   printf "\\n"
   printf "  Crontab: @hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
   echo
@@ -92,6 +93,10 @@ while [[ $# -gt 0 ]]; do
       gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$2" # Source: https://stackoverflow.com/a/14203146
       shift # past argument
       shift # past value
+      ;;
+      --light-temperature | -lt)
+      shift
+      gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature
       ;;
     -*|--*)
       printf "Unrecognized option: $1\\n\\n"
