@@ -94,7 +94,7 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
-      --light-temperature | -lt)
+    --light-temperature | -lt)
       gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature
       shift
       ;;
