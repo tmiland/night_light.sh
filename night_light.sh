@@ -95,8 +95,8 @@ while [[ $# -gt 0 ]]; do
       shift # past value
       ;;
       --light-temperature | -lt)
-      shift
       gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature
+      shift
       ;;
     -*|--*)
       printf "Unrecognized option: $1\\n\\n"
@@ -230,14 +230,10 @@ night_light() {
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_night
-  elif [[ "$currenttime" > "$start" ]] || [[ "$currenttime" < "$end" ]]; then
+  elif [[ "$currenttime" > "$end" ]] || [[ "$currenttime" < "$start" ]]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_day
-  else
-    gsettings get \
-      org.gnome.settings-daemon.plugins.color \
-      night-light-temperature
   fi
 }
 
