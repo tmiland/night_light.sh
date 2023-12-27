@@ -112,7 +112,7 @@ done
 
 set -- "${ARGS[@]}"
 
-currentmonth=$(date +%u)
+currentmonth=$(date +%m)
 
 if [[ $CLOCK = 24 ]]; then
   currenttime=$(date +%H:%M)
