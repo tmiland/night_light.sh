@@ -16,7 +16,7 @@ curl -sSL -o ~/.scripts/night_light.sh  https://raw.githubusercontent.com/tmilan
 
 Symlink:
   ```bash
-   ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
+   ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light
   ```
   Now use 
   ```bash
