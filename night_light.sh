@@ -39,13 +39,13 @@ VERSION='1.0.0' # Must stay on line 14 for updater to fetch the numbers
 #
 #------------------------------------------------------------------------------#
 ## Uncomment for debugging purpose
-#set -o errexit
-#set -o pipefail
-#set -o nounset
-#set -o xtrace
+# set -o errexit
+# set -o pipefail
+# set -o nounset
+# set -o xtrace
 
 # Symlink: ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
-# Crontab: @hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1
+# Crontab: 1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 # Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
 
 CLOCK=24
@@ -56,8 +56,10 @@ CLOCK=24
 # 5500 — Balanced night light temperature
 # 6500 — Default night light off temperature
 # 10000 — Highest value (super cool/blue)
-temperature_day="6000"
-temperature_night="3000"
+temperature_morning="5500"
+temperature_noon="6500"
+temperature_evening="3500"
+temperature_night="2500"
 
 usage() {
   # shellcheck disable=SC2046
@@ -115,126 +117,196 @@ set -- "${ARGS[@]}"
 currentmonth=$(date +%m)
 
 if [[ $CLOCK = 24 ]]; then
-  currenttime=$(date +%H:%M)
+  #currenttime=$(date +%H:%M)
+  currenttime=$(cat night_light.txt)
   case $currentmonth in
     1 )
-      start="16:00"
-      end="09:00"
+      morning="09:00"
+      noon="12:00"
+      evening="16:00"
+      night="20:00"
       ;;
     2 )
-      start="17:00"
-      end="08:00"
+      morning="08:00"
+      noon="12:00"
+      evening="17:00"
+      night="20:00"
       ;;
     3 )
-      start="18:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="18:00"
+      night="21:00"
       ;;
     4 )
-      start="19:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="19:00"
+      night="21:00"
       ;;
     5 )
-      start="20:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="20:00"
+      night="22:00"
       ;;
     6 )
-      start="21:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="21:00"
+      night="23:00"
       ;;
     7 )
-      start="20:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="20:00"
+      night="23:00"
       ;;
     8 )
-      start="19:00"
-      end="07:00"
+      morning="07:00"
+      noon="12:00"
+      evening="19:00"
+      night="23:00"
       ;;
     9 )
-      start="18:00"
-      end="08:00"
+      morning="08:00"
+      noon="12:00"
+      evening="18:00"
+      night="22:00"
       ;;
     10 )
-      start="17:00"
-      end="09:00"
+      morning="09:00"
+      noon="12:00"
+      evening="17:00"
+      night="21:00"
       ;;
     11 )
-      start="16:00"
-      end="10:00"
+      morning="10:00"
+      noon="12:00"
+      evening="16:00"
+      night="20:00"
       ;;
     12 )
-      start="15:00"
-      end="10:00"
+      morning="10:00"
+      noon="12:00"
+      evening="15:00"
+      night="20:00"
       ;;
   esac
-elif [[ $CLOCK = 12 ]]; then
-  currenttime=$(date +"%I:%M %p")
-  case $currentmonth in
-    1 )
-      start="04:00 PM"
-      end="09:00 AM"
-      ;;
-    2 )
-      start="05:00 PM"
-      end="08:00 AM"
-      ;;
-    3 )
-      start="06:00 PM"
-      end="07:00 AM"
-      ;;
-    4 )
-      start="07:00 PM"
-      end="07:00 AM"
-      ;;
-    5 )
-      start="08:00 PM"
-      end="07:00 AM"
-      ;;
-    6 )
-      start="10:00 PM"
-      end="07:00 AM"
-      ;;
-    7 )
-      start="10:00 PM"
-      end="07:00 AM"
-      ;;
-    8 )
-      start="09:00 PM"
-      end="07:00 AM"
-      ;;
-    9 )
-      start="08:00 PM"
-      end="08:00 AM"
-      ;;
-    10 )
-      start="07:00 PM"
-      end="09:00 AM"
-      ;;
-    11 )
-      start="06:00 PM"
-      end="10:00 AM"
-      ;;
-    12 )
-      start="05:00 PM"
-      end="10:00 AM"
-      ;;
-  esac
+# elif [[ $CLOCK = 12 ]]; then
+#   currenttime=$(date +"%I:%M")
+#   case $currentmonth in
+#     1 )
+#       morning="09:00 AM"
+#       noon="12:00 PM"
+#       evening="04:00 PM"
+#       night="08:00 PM"
+#       ;;
+#     2 )
+#       morning="08:00 AM"
+#       noon="12:00 PM"
+#       evening="05:00 PM"
+#       night="09:00 PM"
+#       ;;
+#     3 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="06:00 PM"
+#       night="09:00 PM"
+#       ;;
+#     4 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="07:00 PM"
+#       night="09:00 PM"
+#       ;;
+#     5 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="08:00 PM"
+#       night="09:00 PM"
+#       ;;
+#     6 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="10:00 PM"
+#       night="10:00 PM"
+#       ;;
+#     7 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="10:00 PM"
+#       night="11:00 PM"
+#       ;;
+#     8 )
+#       morning="07:00 AM"
+#       noon="12:00 PM"
+#       evening="09:00 PM"
+#       night="11:00 PM"
+#       ;;
+#     9 )
+#       morning="08:00 AM"
+#       noon="12:00 PM"
+#       evening="08:00 PM"
+#       night="11:00 PM"
+#       ;;
+#     10 )
+#       morning="09:00 AM"
+#       noon="12:00 PM"
+#       evening="07:00 PM"
+#       night="10:00 PM"
+#       ;;
+#     11 )
+#       morning="10:00 AM"
+#       noon="12:00 PM"
+#       evening="06:00 PM"
+#       night="09:00 PM"
+#       ;;
+#     12 )
+#       morning="10:00 AM"
+#       noon="12:00 PM"
+#       evening="05:00 PM"
+#       night="08:00 PM"
+#       ;;
+#   esac
 fi
 
 night_light() {
-  if [ -n "${1}" ]
-  then
+
+  if [ -n "${1}" ]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature "${1}"
-  elif [[ "$currenttime" > "$start" ]] || [[ "$currenttime" < "$end" ]]; then
-    gsettings set \
-      org.gnome.settings-daemon.plugins.color \
-      night-light-temperature $temperature_night
-  elif [[ "$currenttime" > "$end" ]] || [[ "$currenttime" < "$start" ]]; then
-    gsettings set \
-      org.gnome.settings-daemon.plugins.color \
-      night-light-temperature $temperature_day
   fi
+
+  if [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]; then
+      gsettings set \
+            org.gnome.settings-daemon.plugins.color \
+            night-light-temperature $temperature_morning
+    echo "Temperature set to morning ($temperature_morning)"
+  fi
+
+  if [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]; then
+      gsettings set \
+            org.gnome.settings-daemon.plugins.color \
+            night-light-temperature $temperature_noon
+    echo "Temperature set to noon ($temperature_noon)"
+  fi
+
+  if [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]; then
+      gsettings set \
+            org.gnome.settings-daemon.plugins.color \
+            night-light-temperature $temperature_evening
+    echo "Temperature set to evening ($temperature_evening)"
+  fi
+
+  if [[ ! ( "$currenttime" < "$night" ) ]]; then
+      gsettings set \
+            org.gnome.settings-daemon.plugins.color \
+            night-light-temperature $temperature_night
+    echo "Temperature set to night ($temperature_night)"
+  fi
+
 }
 
 night_light "$@"
