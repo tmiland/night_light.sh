@@ -100,6 +100,10 @@ while [[ $# -gt 0 ]]; do
       gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature
       shift
       ;;
+    --dark-toggle | -dt)
+      DT=1
+      shift
+      ;;
     -*|--*)
       printf "Unrecognized option: $1\\n\\n"
       usage
@@ -192,83 +196,117 @@ if [[ $CLOCK = 24 ]]; then
       night="20:00"
       ;;
   esac
-# elif [[ $CLOCK = 12 ]]; then
-#   currenttime=$(date +"%I:%M")
-#   case $currentmonth in
-#     1 )
-#       morning="09:00 AM"
-#       noon="12:00 PM"
-#       evening="04:00 PM"
-#       night="08:00 PM"
-#       ;;
-#     2 )
-#       morning="08:00 AM"
-#       noon="12:00 PM"
-#       evening="05:00 PM"
-#       night="09:00 PM"
-#       ;;
-#     3 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="06:00 PM"
-#       night="09:00 PM"
-#       ;;
-#     4 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="07:00 PM"
-#       night="09:00 PM"
-#       ;;
-#     5 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="08:00 PM"
-#       night="09:00 PM"
-#       ;;
-#     6 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="10:00 PM"
-#       night="10:00 PM"
-#       ;;
-#     7 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="10:00 PM"
-#       night="11:00 PM"
-#       ;;
-#     8 )
-#       morning="07:00 AM"
-#       noon="12:00 PM"
-#       evening="09:00 PM"
-#       night="11:00 PM"
-#       ;;
-#     9 )
-#       morning="08:00 AM"
-#       noon="12:00 PM"
-#       evening="08:00 PM"
-#       night="11:00 PM"
-#       ;;
-#     10 )
-#       morning="09:00 AM"
-#       noon="12:00 PM"
-#       evening="07:00 PM"
-#       night="10:00 PM"
-#       ;;
-#     11 )
-#       morning="10:00 AM"
-#       noon="12:00 PM"
-#       evening="06:00 PM"
-#       night="09:00 PM"
-#       ;;
-#     12 )
-#       morning="10:00 AM"
-#       noon="12:00 PM"
-#       evening="05:00 PM"
-#       night="08:00 PM"
-#       ;;
-#   esac
+  # elif [[ $CLOCK = 12 ]]; then
+  #   currenttime=$(date +"%I:%M")
+  #   case $currentmonth in
+  #     1 )
+  #       morning="09:00 AM"
+  #       noon="12:00 PM"
+  #       evening="04:00 PM"
+  #       night="08:00 PM"
+  #       ;;
+  #     2 )
+  #       morning="08:00 AM"
+  #       noon="12:00 PM"
+  #       evening="05:00 PM"
+  #       night="09:00 PM"
+  #       ;;
+  #     3 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="06:00 PM"
+  #       night="09:00 PM"
+  #       ;;
+  #     4 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="07:00 PM"
+  #       night="09:00 PM"
+  #       ;;
+  #     5 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="08:00 PM"
+  #       night="09:00 PM"
+  #       ;;
+  #     6 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="10:00 PM"
+  #       night="10:00 PM"
+  #       ;;
+  #     7 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="10:00 PM"
+  #       night="11:00 PM"
+  #       ;;
+  #     8 )
+  #       morning="07:00 AM"
+  #       noon="12:00 PM"
+  #       evening="09:00 PM"
+  #       night="11:00 PM"
+  #       ;;
+  #     9 )
+  #       morning="08:00 AM"
+  #       noon="12:00 PM"
+  #       evening="08:00 PM"
+  #       night="11:00 PM"
+  #       ;;
+  #     10 )
+  #       morning="09:00 AM"
+  #       noon="12:00 PM"
+  #       evening="07:00 PM"
+  #       night="10:00 PM"
+  #       ;;
+  #     11 )
+  #       morning="10:00 AM"
+  #       noon="12:00 PM"
+  #       evening="06:00 PM"
+  #       night="09:00 PM"
+  #       ;;
+  #     12 )
+  #       morning="10:00 AM"
+  #       noon="12:00 PM"
+  #       evening="05:00 PM"
+  #       night="08:00 PM"
+  #       ;;
+  #   esac
 fi
+
+dark_toggle=$([[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] && echo dark || echo light)
+
+toogle_dark() {
+  if [[ $DT == 1 ]]; then
+    if command -v dark-toggle &> /dev/null; then
+      if ! [[ $dark_toggle == "dark" ]]; then
+        dark-toggle
+      else
+        echo "Color-scheme is already set to dark"
+        exit 1
+      fi
+    else
+      echo "dark-toggle could not be found"
+      exit 1
+    fi
+  fi
+}
+
+toggle_light() {
+  if [[ $DT == 1 ]]; then
+    if command -v dark-toggle &> /dev/null; then
+      if ! [[ $dark_toggle == "light" ]]; then
+        dark-toggle
+      else
+        echo "Color-scheme is already set to light"
+        exit 1
+      fi
+    else
+      echo "dark-toggle could not be found"
+      exit 1
+    fi
+  fi
+}
 
 night_light() {
 
@@ -279,31 +317,35 @@ night_light() {
   fi
 
   if [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]; then
-      gsettings set \
-            org.gnome.settings-daemon.plugins.color \
-            night-light-temperature $temperature_morning
+    gsettings set \
+      org.gnome.settings-daemon.plugins.color \
+      night-light-temperature $temperature_morning
     echo "Temperature set to morning ($temperature_morning)"
+    toggle_light
   fi
 
   if [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]; then
-      gsettings set \
-            org.gnome.settings-daemon.plugins.color \
-            night-light-temperature $temperature_noon
+    gsettings set \
+      org.gnome.settings-daemon.plugins.color \
+      night-light-temperature $temperature_noon
     echo "Temperature set to noon ($temperature_noon)"
+    toggle_light
   fi
 
   if [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]; then
-      gsettings set \
-            org.gnome.settings-daemon.plugins.color \
-            night-light-temperature $temperature_evening
+    gsettings set \
+      org.gnome.settings-daemon.plugins.color \
+      night-light-temperature $temperature_evening
     echo "Temperature set to evening ($temperature_evening)"
+    toogle_dark
   fi
 
   if [[ ! ( "$currenttime" < "$night" ) ]]; then
-      gsettings set \
-            org.gnome.settings-daemon.plugins.color \
-            night-light-temperature $temperature_night
+    gsettings set \
+      org.gnome.settings-daemon.plugins.color \
+      night-light-temperature $temperature_night
     echo "Temperature set to night ($temperature_night)"
+    toogle_dark
   fi
 
 }
