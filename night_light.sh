@@ -117,8 +117,7 @@ set -- "${ARGS[@]}"
 currentmonth=$(date +%m)
 
 if [[ $CLOCK = 24 ]]; then
-  #currenttime=$(date +%H:%M)
-  currenttime=$(cat night_light.txt)
+  currenttime=$(date +%H:%M)
   case $currentmonth in
     1 )
       morning="09:00"
