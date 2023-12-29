@@ -5,6 +5,8 @@
 
 - Automatically adjusts night light based on local time. (default 24 hour clock)
   ~~Use: -12 as argument to set to 12 hours, or set `CLOCK=12` in script.~~ (WIP)
+- Toggles dark/light mode based on time of day (light in the morning and dark in the night)
+  - Using [dark-toggle](https://github.com/rifazn/dark-toggle)
   
 ### Installation
 
@@ -51,6 +53,10 @@ If called without arguments, uses 24 hour clock.
 ```bash
 1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 ```
+
+## Compatibility and Requirements
+
+ - Gnome desktop
 
 ## Credits
 
