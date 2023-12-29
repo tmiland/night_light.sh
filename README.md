@@ -49,7 +49,7 @@ If called without arguments, uses 24 hour clock.
 
   - Or install with crontab `contab -e` and add to new line
 ```bash
-1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
+1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 ```
 
 ## Credits
