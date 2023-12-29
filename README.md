@@ -4,7 +4,7 @@
 ## Script to adjust night light in gnome
 
 - Automatically adjusts night light based on local time. (default 24 hour clock)
-  Use: -12 as argument to set to 12 hours, or set `CLOCK=12` in script.
+  ~~Use: -12 as argument to set to 12 hours, or set `CLOCK=12` in script.~~ (WIP)
   
 ### Installation
 
@@ -39,7 +39,7 @@ Usage: [options]
 If called without arguments, uses 24 hour clock.
 
  --24hour            | -24           use 24 hour clock
- --12hour            | -12           use 12 hour clock
+ --12hour            | -12           use 12 hour clock (WIP) (NOT WORKING)
  --light-enabled     | -le           turn on/off (true/false)
  --light-temperature | -lt           show light-temperature
 
@@ -48,7 +48,7 @@ If called without arguments, uses 24 hour clock.
 
   - Or install with crontab `contab -e` and add to new line
 ```bash
-@hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1
+1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 ```
 
 ## Credits
