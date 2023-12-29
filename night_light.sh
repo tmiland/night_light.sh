@@ -71,6 +71,7 @@ usage() {
   printf "  --12hour            | -12           use 12 hour clock\\n"
   printf "  --light-enabled     | -le           turn on/off (true/false)\\n"
   printf "  --light-temperature | -lt           show light-temperature"
+  printf "  --dark-toggle       | -dt           toggle dark/light color scheme"
   printf "\\n"
   printf "  Crontab: @hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
   echo
