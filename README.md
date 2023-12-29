@@ -54,7 +54,8 @@ If called without arguments, uses 24 hour clock.
 
 ## Credits
 
-- Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
+- [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
+- [dark-toggle](https://github.com/rifazn/dark-toggle)
 
 #### Disclaimer 
 
