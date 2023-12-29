@@ -42,6 +42,7 @@ If called without arguments, uses 24 hour clock.
  --12hour            | -12           use 12 hour clock (WIP) (NOT WORKING)
  --light-enabled     | -le           turn on/off (true/false)
  --light-temperature | -lt           show light-temperature
+ --dark-toggle       | -dt           toggle dark/light color scheme
 
 ```
 
