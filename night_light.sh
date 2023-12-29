@@ -73,7 +73,7 @@ usage() {
   printf "  --light-temperature | -lt           show light-temperature"
   printf "  --dark-toggle       | -dt           toggle dark/light color scheme"
   printf "\\n"
-  printf "  Crontab: @hourly bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
+  printf "  Crontab: 1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
   echo
 }
 
