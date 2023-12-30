@@ -70,7 +70,7 @@ usage() {
   printf "  --24hour            | -24           use 24 hour clock\\n"
   printf "  --12hour            | -12           use 12 hour clock\\n"
   printf "  --light-enabled     | -le           turn on/off (true/false)\\n"
-  printf "  --light-temperature | -lt           show light-temperature"
+  printf "  --light-temperature | -lt           show light-temperature\\n"
   printf "  --dark-toggle       | -dt           toggle dark/light color scheme"
   printf "\\n"
   printf "  Crontab: 1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
