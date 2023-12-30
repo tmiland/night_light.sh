@@ -1,0 +1,12 @@
+[Unit]
+Description=Automatically adjusts night light based on local time.
+Requires=night_light.service
+
+[Timer]
+Unit=night_light.service
+OnCalendar=hourly
+AccuracySec=60s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
