@@ -127,8 +127,8 @@ if [[ $CLOCK = 24 ]]; then
     01 )
       morning="09:00"
       noon="12:00"
-      evening="16:00"
-      night="20:00"
+      evening="15:00"
+      night="18:00"
       ;;
     02 )
       morning="08:00"
