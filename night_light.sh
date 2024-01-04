@@ -124,55 +124,55 @@ currentmonth=$(date +%m)
 if [[ $CLOCK = 24 ]]; then
   currenttime=$(date +%H:%M)
   case $currentmonth in
-    1 )
+    01 )
       morning="09:00"
       noon="12:00"
       evening="16:00"
       night="20:00"
       ;;
-    2 )
+    02 )
       morning="08:00"
       noon="12:00"
       evening="17:00"
       night="20:00"
       ;;
-    3 )
+    03 )
       morning="07:00"
       noon="12:00"
       evening="18:00"
       night="21:00"
       ;;
-    4 )
+    04 )
       morning="07:00"
       noon="12:00"
       evening="19:00"
       night="21:00"
       ;;
-    5 )
+    05 )
       morning="07:00"
       noon="12:00"
       evening="20:00"
       night="22:00"
       ;;
-    6 )
+    06 )
       morning="07:00"
       noon="12:00"
       evening="21:00"
       night="23:00"
       ;;
-    7 )
+    07 )
       morning="07:00"
       noon="12:00"
       evening="20:00"
       night="23:00"
       ;;
-    8 )
+    08 )
       morning="07:00"
       noon="12:00"
       evening="19:00"
       night="23:00"
       ;;
-    9 )
+    09 )
       morning="08:00"
       noon="12:00"
       evening="18:00"
@@ -200,55 +200,55 @@ if [[ $CLOCK = 24 ]]; then
   # elif [[ $CLOCK = 12 ]]; then
   #   currenttime=$(date +"%I:%M")
   #   case $currentmonth in
-  #     1 )
+  #     01 )
   #       morning="09:00 AM"
   #       noon="12:00 PM"
   #       evening="04:00 PM"
   #       night="08:00 PM"
   #       ;;
-  #     2 )
+  #     02 )
   #       morning="08:00 AM"
   #       noon="12:00 PM"
   #       evening="05:00 PM"
   #       night="09:00 PM"
   #       ;;
-  #     3 )
+  #     03 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="06:00 PM"
   #       night="09:00 PM"
   #       ;;
-  #     4 )
+  #     04 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="07:00 PM"
   #       night="09:00 PM"
   #       ;;
-  #     5 )
+  #     05 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="08:00 PM"
   #       night="09:00 PM"
   #       ;;
-  #     6 )
+  #     06 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="10:00 PM"
   #       night="10:00 PM"
   #       ;;
-  #     7 )
+  #     07 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="10:00 PM"
   #       night="11:00 PM"
   #       ;;
-  #     8 )
+  #     08 )
   #       morning="07:00 AM"
   #       noon="12:00 PM"
   #       evening="09:00 PM"
   #       night="11:00 PM"
   #       ;;
-  #     9 )
+  #     09 )
   #       morning="08:00 AM"
   #       noon="12:00 PM"
   #       evening="08:00 PM"
@@ -315,33 +315,25 @@ night_light() {
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature "${1}"
-  fi
-
-  if [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_morning
     echo "Temperature set to morning ($temperature_morning)"
     toggle_light
-  fi
-
-  if [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_noon
     echo "Temperature set to noon ($temperature_noon)"
     toggle_light
-  fi
-
-  if [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_evening
     echo "Temperature set to evening ($temperature_evening)"
     toogle_dark
-  fi
-
-  if [[ ! ( "$currenttime" < "$night" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$night" ) ]]; then
     gsettings set \
       org.gnome.settings-daemon.plugins.color \
       night-light-temperature $temperature_night
