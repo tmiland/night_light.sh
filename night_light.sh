@@ -58,8 +58,10 @@ if ! dpkg -s $pkg >/dev/null 2>&1; then
   apt install $pkg
 fi
 
+wget -q --spider https://www.yr.no
+
 sun() {
-  $pkg --dump $yr_url | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
+  cat sun.tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
 }
 
 sunrise=$(sun rise)
@@ -73,13 +75,21 @@ sunset-transition() {
   date -d"$1$2 minutes $sunset" '+%H:%M'
 }
 
+if [ $? -eq 0 ]; then
+    echo "yr.no is Online."
+    echo "Sunrise: $sunrise Sunset: $sunset"
+    $pkg --dump $yr_url > sun.tmp
+else
+    echo "yr.no is Offline"
+fi
+
 cfg_file=/home/tommy/.github/night_light/.night_light_config
 # Read hidden configuration file with entries separated by " " into array
-IFS=' ' read -ra CfgArr < $cfg_file
-max_bright="${CfgArr[0]}"
-after_sunrise="${CfgArr[1]}"
-min_bright="${CfgArr[2]}"
-before_sunset="${CfgArr[3]}"
+IFS=' ' read -ra cfg_array < $cfg_file
+max_bright="${cfg_array[0]}"
+after_sunrise="${cfg_array[1]}"
+min_bright="${cfg_array[2]}"
+before_sunset="${cfg_array[3]}" 
 
 # Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
 # 1000 — Lowest value (super warm/red)
