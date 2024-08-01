@@ -61,7 +61,7 @@ fi
 wget -q --spider https://www.yr.no
 
 sun() {
-  cat sun.tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
+  cat /tmp/sun.tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
 }
 
 sunrise=$(sun rise)
@@ -78,7 +78,7 @@ sunset-transition() {
 if [ $? -eq 0 ]; then
     echo "yr.no is Online."
     echo "Sunrise: $sunrise Sunset: $sunset"
-    $pkg --dump $yr_url > sun.tmp
+    $pkg --dump $yr_url > /tmp/sun.tmp
 else
     echo "yr.no is Offline"
 fi
