@@ -53,6 +53,7 @@ yr="1-68562/Norway/Telemark/Tinn/Rjukan"
 yr_url=https://www.yr.no/en/other-conditions/$yr
 
 pkg=lynx
+yr_tmp=/tmp/sun.tmp
 
 if ! dpkg -s $pkg >/dev/null 2>&1; then
   apt install $pkg
@@ -61,8 +62,12 @@ fi
 wget -q --spider https://www.yr.no
 
 sun() {
-  cat /tmp/sun.tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
+  cat $yr_tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
 }
+
+
+# cloud_cover=$(cat $yr_tmp | grep -oE ".[[:digit:]]% cloud cover" | sed "s/% cloud cover//g")
+
 
 sunrise=$(sun rise)
 sunset=$(sun set)
@@ -78,7 +83,7 @@ sunset-transition() {
 if [ $? -eq 0 ]; then
     echo "yr.no is Online."
     echo "Sunrise: $sunrise Sunset: $sunset"
-    $pkg --dump $yr_url > /tmp/sun.tmp
+    $pkg --dump $yr_url > $yr_tmp
 else
     echo "yr.no is Offline"
 fi
