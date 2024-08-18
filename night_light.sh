@@ -157,6 +157,12 @@ auto-run() {
   while true
   do
 
+    if [[ $(find "$yr_tmp" -mtime +1 -print) ]]; then
+      echo "File $yr_tmp exists and is older than 1 days"
+      $pkg --dump $yr_url > $yr_tmp
+    elif ! [[ -f $yr_tmp ]]; then
+      $pkg --dump $yr_url > $yr_tmp
+    fi
     # Current seconds
     secNow=$(date +"%s")
     secSunrise=$(date --date="$sunrise today" +%s)
