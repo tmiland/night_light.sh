@@ -39,7 +39,8 @@
 #
 #------------------------------------------------------------------------------#
 ## Uncomment for debugging purpose
-if [[ $2 == "debug" ]]; then
+if [[ $2 == "debug" ]]
+then
   set -o errexit
   set -o pipefail
   set -o nounset
@@ -49,25 +50,36 @@ fi
 # Crontab: 1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 # Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
 
+# Cloud cover
+cc=1
+# yr.no
 yr="1-68562/Norway/Telemark/Tinn/Rjukan"
 yr_url=https://www.yr.no/en/other-conditions/$yr
-
-pkg=lynx
 yr_tmp=/tmp/sun.tmp
+# Crawler
+pkg=lynx
 
-if ! dpkg -s $pkg >/dev/null 2>&1; then
+
+if ! dpkg -s $pkg >/dev/null 2>&1
+then
   apt install $pkg
 fi
 
 wget -q --spider https://www.yr.no
 
 sun() {
-  cat $yr_tmp | grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" | sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
+  cat $yr_tmp |
+  grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" |
+  sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
 }
 
-
-# cloud_cover=$(cat $yr_tmp | grep -oE ".[[:digit:]]% cloud cover" | sed "s/% cloud cover//g")
-
+if [[ $cc == "1" ]]
+then
+  cloud_cover=$(
+    cat $yr_tmp |
+    grep -oE "[[:digit:]]*% cloud cover" |
+  sed "s/% cloud cover//g")
+fi
 
 sunrise=$(sun rise)
 sunset=$(sun set)
@@ -80,12 +92,16 @@ sunset-transition() {
   date -d"$1$2 minutes $sunset" '+%H:%M'
 }
 
-if [ $? -eq 0 ]; then
-    echo "yr.no is Online."
-    echo "Sunrise: $sunrise Sunset: $sunset"
-    $pkg --dump $yr_url > $yr_tmp
+if [ $? -eq 0 ]
+then
+  echo "yr.no is Online."
+  echo "Sunrise: $sunrise Sunset: $sunset"
+  if [[ $cc == "1" ]]; then
+    echo "Cloud cover past 5 minutes: $cloud_cover%"
+  fi
+  $pkg --dump $yr_url > $yr_tmp
 else
-    echo "yr.no is Offline"
+  echo "yr.no is Offline"
 fi
 
 cfg_file=/home/tommy/.github/night_light/.night_light_config
@@ -94,7 +110,7 @@ IFS=' ' read -ra cfg_array < $cfg_file
 max_bright="${cfg_array[0]}"
 after_sunrise="${cfg_array[1]}"
 min_bright="${cfg_array[2]}"
-before_sunset="${cfg_array[3]}" 
+before_sunset="${cfg_array[3]}"
 
 # Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
 # 1000 — Lowest value (super warm/red)
@@ -115,53 +131,61 @@ night-light-temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
 
-dark_toggle=$([[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] && echo dark || echo light)
+get_dark_toggle=$(
+  [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
+  echo dark ||
+echo light)
 
-toogle_dark() {
-  if [[ $DT == 1 ]]; then
-    if command -v dark-toggle &> /dev/null; then
-      if ! [[ $dark_toggle == "dark" ]]; then
-        dark-toggle
-      else
-        echo "Color-scheme is already set to dark"
-        exit 1
-      fi
-    else
-      echo "dark-toggle could not be found"
-      exit 1
-    fi
+dark_toggle() {
+  gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
+}
+
+toggle_dark() {
+  if ! [[ $get_dark_toggle == "dark" ]]
+  then
+    dark_toggle dark
+  else
+    echo "Color-scheme is already set to dark"
   fi
 }
 
 toggle_light() {
-  if [[ $DT == 1 ]]; then
-    if command -v dark-toggle &> /dev/null; then
-      if ! [[ $dark_toggle == "light" ]]; then
-        dark-toggle
-      else
-        echo "Color-scheme is already set to light"
-        exit 1
-      fi
-    else
-      echo "dark-toggle could not be found"
-      exit 1
-    fi
+  if ! [[ $get_dark_toggle == "light" ]]
+  then
+    dark_toggle light
+  else
+    echo "Color-scheme is already set to light"
   fi
 }
 
 # Source: https://askubuntu.com/a/894470
 # global variable
-LastSetting=$(gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature | sed 's|uint32 ||g')
+LastSetting=$(
+  gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature |
+sed 's|uint32 ||g')
 
 auto-run() {
   while true
   do
-
-    if [[ $(find "$yr_tmp" -mtime +1 -print) ]]; then
-      echo "File $yr_tmp exists and is older than 1 days"
-      $pkg --dump $yr_url > $yr_tmp
-    elif ! [[ -f $yr_tmp ]]; then
-      $pkg --dump $yr_url > $yr_tmp
+    # Skip running at night time.
+    if ! [[ "$secNow" -gt "$secSunset" ]] || ! [[ "$secNow" -lt "$secSunrise" ]]
+    then
+      if [[ $(find "$yr_tmp" -mmin +5 -print) ]]
+      then
+        echo "File $yr_tmp exists and is older than 5 minutes"
+        $pkg --dump $yr_url > $yr_tmp
+      elif ! [[ -f $yr_tmp ]]
+      then
+        $pkg --dump $yr_url > $yr_tmp
+      fi
+      if [[ $cc == "1" ]]
+      then
+        # yr.no cloud cover percentage
+        cloud_cover=$(
+          cat $yr_tmp |
+          grep -oE "[[:digit:]]*% cloud cover" |
+        sed "s/% cloud cover//g")
+      fi
     fi
     # Current seconds
     secNow=$(date +"%s")
@@ -191,7 +215,8 @@ auto-run() {
       Adjust=$( bc <<< "scale=6; $transition_spread * ( $2 / $secTotal )" )
       Adjust=$( echo "$Adjust" | cut -f1 -d"." ) # Truncate number to integer
 
-      if ! [[ $Adjust =~ $re ]] ; then
+      if ! [[ $Adjust =~ $re ]]
+      then
         Adjust=0   # When we get to last minute $Adjust can be non-numeric
       fi
 
@@ -210,13 +235,21 @@ auto-run() {
       calc-level-and-sleep "$after_sunrise" $secPast
       PastDuration=$(date +%H:%M:%S -ud @${secPast})
       echo "Transitioning $PastDuration minutes after sunrise (Currently set to: $after_sunrise)."
+      toggle_light
       continue
     fi
     # Is it full bright day time?
     if [[ "$secNow" -gt "$secMaxCutoff" ]] && [[ "$secNow" -lt "$secMinStart" ]]
     then
       # MAXIMUM: after sunrise transition AND before nightime transition
-      set-and-sleep "$max_bright"
+      # Subtract yr.no cloud cover percentage from max brightness
+      if [[ $cc == "1" ]]
+      then
+        set-and-sleep $(( $max_bright - $cloud_cover ))
+      else
+        set-and-sleep "$max_bright"
+      fi
+      toggle_light
       continue
     fi
     # Are we between beginning to dim and sunset (full dim)?
@@ -234,7 +267,7 @@ auto-run() {
     then
       # MINIMUM: after sunset or before sunrise nightime setting
       set-and-sleep "$min_bright"
-      toogle_dark
+      toggle_dark
       continue
     fi
     # At this stage brightness was set with manual override outside this program
@@ -261,11 +294,11 @@ usage() {
   echo
 }
 
-DT=
 AR=
 
 ARGS=()
-while [[ $# -gt 0 ]]; do
+while [[ $# -gt 0 ]]
+do
   case $1 in
     --help | -h)
       usage
@@ -277,11 +310,12 @@ while [[ $# -gt 0 ]]; do
       shift # past value
       ;;
     --light-temperature | -lt)
-      echo "$LastSetting"
+      echo "Current temperature: $LastSetting"
       exit 0
       ;;
     --dark-toggle | -dt)
-      DT=1
+      toggle_dark
+      toggle_light
       shift
       ;;
     --auto-run | -ar)
@@ -315,29 +349,34 @@ evening=$(sunset-transition - "$before_sunset")
 night=$(sunset-transition + "$before_sunset")
 
 night_light() {
-  if ! [[ $AR == "1" ]] && [[ -n "${1}" ]]; then
+  if ! [[ $AR == "1" ]] && [[ -n "${1}" ]]
+  then
     night-light-temperature "${1}"
     return
-  elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]
+  then
     night-light-temperature $temperature_morning
     echo "Temperature set to morning ($temperature_morning)"
     return
     toggle_light
-  elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]
+  then
     night-light-temperature $temperature_noon
     echo "Temperature set to noon ($temperature_noon)"
     return
     toggle_light
-  elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]; then
+  elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]
+  then
     night-light-temperature $temperature_evening
     echo "Temperature set to evening ($temperature_evening)"
     return
-    toogle_dark
-  elif [[ ! ( "$currenttime" < "$night" ) ]]; then
+    toggle_dark
+  elif [[ ! ( "$currenttime" < "$night" ) ]]
+  then
     night-light-temperature $temperature_night
     echo "Temperature set to night ($temperature_night)"
     return
-    toogle_dark
+    toggle_dark
   fi
 }
 
