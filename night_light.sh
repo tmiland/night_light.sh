@@ -167,7 +167,11 @@ sed 's|uint32 ||g')
 auto-run() {
   while true
   do
-    # Skip running at night time.
+    # Current seconds
+    secNow=$(date +"%s")
+    secSunrise=$(date --date="$sunrise today" +%s)
+    secSunset=$(date --date="$sunset today" +%s)
+    # Skip running at night time
     if ! [[ "$secNow" -gt "$secSunset" ]] || ! [[ "$secNow" -lt "$secSunrise" ]]
     then
       if [[ $(find "$yr_tmp" -mmin +5 -print) ]]
@@ -187,10 +191,6 @@ auto-run() {
         sed "s/% cloud cover//g")
       fi
     fi
-    # Current seconds
-    secNow=$(date +"%s")
-    secSunrise=$(date --date="$sunrise today" +%s)
-    secSunset=$(date --date="$sunset today" +%s)
 
     set-and-sleep() {
       if [[ $1 != $LastSetting ]]
