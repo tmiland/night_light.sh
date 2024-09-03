@@ -209,26 +209,28 @@ sunset-transition() {
   date -d"$1$2 minutes $sunset" '+%H:%M'
 }
 
-if [ $? -eq 0 ] && [[ -d $config_folder ]]
-then
-  echo "yr.no is Online."
-  echo "Sunrise: $sunrise Sunset: $sunset"
-  if [[ $cc == "1" ]]; then
-    echo "Cloud cover past 5 minutes: $cloud_cover%"
-  fi
-  if [[ $uv == "1" ]]; then
-    echo "UV Index past 5 minutes: $uv_radiation"
-  fi
-  if [[ $cc == "1" ]] && [[ $uv == "1" ]]
+yr() {
+  if [ $? -eq 0 ]
   then
-    echo "UV Index is added to Cloud cover"
-    echo "On a inverted scale from 100-0"
-    echo "Calculation: $max_bright-($cloud_cover+$uv_scale)="$(( $max_bright - ($cloud_cover + $uv_scale) ))""
+    echo "yr.no is Online."
+    echo "Sunrise: $sunrise Sunset: $sunset"
+    if [[ $cc == "1" ]]; then
+      echo "Cloud cover past 5 minutes: $cloud_cover%"
+    fi
+    if [[ $uv == "1" ]]; then
+      echo "UV Index past 5 minutes: $uv_radiation"
+    fi
+    if [[ $cc == "1" ]] && [[ $uv == "1" ]]
+    then
+      echo "UV Index is added to Cloud cover"
+      echo "On a inverted scale from 100-0"
+      echo "Calculation: $max_bright-($cloud_cover+$uv_scale)="$(( $max_bright - ($cloud_cover + $uv_scale) ))""
+    fi
+    $pkg --dump "$yr_location_url" > "$yr_tmp"
+  else
+    echo "yr.no is Offline"
   fi
-  $pkg --dump "$yr_location_url" > "$yr_tmp"
-else
-  echo "yr.no is Offline"
-fi
+}
 
 night-light-temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
@@ -270,6 +272,7 @@ sed 's|uint32 ||g')
 auto-run() {
   while true
   do
+    yr
     # Current seconds
     secNow=$(date +"%s")
     secSunrise=$(date --date="$sunrise today" +%s)
@@ -437,12 +440,12 @@ install() {
   download_files() {
     if [[ $(command -v 'curl') ]]; then
       curl -fsSLk "$night_light_config_url" > "${config_folder}"/.night_light_config
-      curl -fsSLk "$night_light_config_sh_url" > "${config_folder}"/night_light-config.sh
+      curl -fsSLk "$night_light_config_sh_url" > "${config_folder}"/night_light_config.sh
       curl -fsSLk "$night_light_url" > "${config_folder}"/night_light.sh
       curl -fsSLk "$night_light_service" > "$systemd_user_folder"/night_light.service
     elif [[ $(command -v 'wget') ]]; then
       wget -q "$night_light_config_url" -O "${config_folder}"/.night_light_config
-      wget -q "$night_light_config_sh_url" -O "${config_folder}"/night_light-config.sh
+      wget -q "$night_light_config_sh_url" -O "${config_folder}"/night_light_config.sh
       wget -q "$night_light_url" -O "${config_folder}"/night_light.sh
       wget -q "$night_light_service" -O "$systemd_user_folder"/night_light.service
     else
