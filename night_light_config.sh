@@ -15,7 +15,7 @@ output=$(zenity --forms --title="Night Light Auto Brightness Configuration" \
    --add-entry="Cloud cover on/off (0/1) : (${CfgArr[4]})" \
    --add-entry="UV Index on/off (0/1) : (${CfgArr[5]})" \
    --add-entry="Change color scheme on/off (0/1) : (${CfgArr[6]})" \
-   --add-entry="Turn yr.no on/off (0/1) : (${CfgArr[7]})"
+   --add-entry="Turn yr.no on/off (0/1) : (${CfgArr[7]})" \
    --add-entry="yr.no location : (${CfgArr[8]})")
 
 IFS='|' read -ra ZenArr <<<"$output" # Split zenity entries separated by "|" into array elements
