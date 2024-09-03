@@ -70,8 +70,10 @@ then
   uv="${cfg_array[5]}"
   # Color scheme
   cs="${cfg_array[6]}"
-  # yr.no location (E.g: 1-68562/Norway/Telemark/Tinn/Rjukan)
+  # yr.no
   yr="${cfg_array[7]}"
+  # yr.no location (E.g: /1-68562/Norway/Telemark/Tinn/Rjukan)
+  yr_location="${cfg_array[8]}"
 else
   # Day time maximum display brightness
   max_bright=5750
@@ -88,18 +90,11 @@ else
   # Change color scheme
   cs=1
   # yr.no
-  yr="1-68562/Norway/Telemark/Tinn/Rjukan"
+  yr=0
+  # yr.no location
+  yr_location="/1-68562/Norway/Telemark/Tinn/Rjukan"
 fi
 
-yr_url=https://www.yr.no
-yr_location_url=$yr_url/en/other-conditions/$yr
-# Use home folder for tmp file Persistence
-nl_folder=$config_folder
-yr_tmp="$nl_folder"/sun.tmp
-if ! [ -f "$yr_tmp" ]
-then
-  mkdir -p "$nl_folder" && touch "$yr_tmp"
-fi
 # Crawler
 pkg=lynx
 # Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
@@ -118,98 +113,110 @@ then
   apt install $pkg
 fi
 
-wget -q --spider $yr_url
-
-sun() {
-  grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" "$yr_tmp" |
-  sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
-}
-
-if [[ $cc == "1" ]]
-then
-  cloud_cover=$(
-    grep -oE "[[:digit:]]*% cloud cover" "$yr_tmp" |
-  sed "s/% cloud cover//g")
-fi
-
-if [[ $uv == "1" ]]
-then
-  uv_rad=$(
-    grep --no-group-separator -A 3 "UV forecast" "$yr_tmp" |
-    awk 'FNR == 4 {print}'|
-  grep -o "[[:digit:]]")
-fi
-# The forecast shows the UV index for the selected hour. It does not take the cloud cover into account.
-#
-# The UV index indicates how strong the UV radiation from the sun is.
-# 1-2	Low
-# 3–5	Moderate
-# 6–7	High
-# 8–10	Very high
-# 11+	Extreme
-case $uv_rad in
-  0)
-    uv_radiation="($uv_rad) No UV radiation"
-    uv_scale=100
-    ;;
-  1)
-    uv_radiation="($uv_rad) Low"
-    uv_scale=95
-    ;;
-  2)
-    uv_radiation="($uv_rad) Low"
-    uv_scale=85
-    ;;
-  3)
-    uv_radiation="($uv_rad) Moderate"
-    uv_scale=75
-    ;;
-  4)
-    uv_radiation="($uv_rad) Moderate"
-    uv_scale=65
-    ;;
-  5)
-    uv_radiation="($uv_rad) Moderate"
-    uv_scale=55
-    ;;
-  6)
-    uv_radiation="($uv_rad) High"
-    uv_scale=45
-    ;;
-  7)
-    uv_radiation="($uv_rad) High"
-    uv_scale=35
-    ;;
-  8)
-    uv_radiation="($uv_rad) Very high"
-    uv_scale=25
-    ;;
-  9)
-    uv_radiation="($uv_rad) Very high"
-    uv_scale=15
-    ;;
-  10)
-    uv_radiation="($uv_rad) Very high"
-    uv_scale=5
-    ;;
-  11)
-    uv_radiation="($uv_rad) Extreme"
-    uv_scale=0
-    ;;
-esac
-
-sunrise=$(sun rise)
-sunset=$(sun set)
-
-sunrise-transition() {
-  date -d"$1$2 minutes $sunrise" '+%H:%M'
-}
-
-sunset-transition() {
-  date -d"$1$2 minutes $sunset" '+%H:%M'
-}
-
 yr() {
+  # yr.no url
+  yr_url=https://www.yr.no
+  # yr.no location url
+  yr_location_url=$yr_url/en/other-conditions$yr_location
+  # Use home folder for tmp file Persistence
+  nl_folder=$config_folder
+  # yr.no tmp file
+  yr_tmp="$nl_folder"/yr.tmp
+  if ! [ -f "$yr_tmp" ]
+  then
+    mkdir -p "$nl_folder"
+    $pkg --dump "$yr_location_url" > "$yr_tmp"
+  fi
+
+  sun() {
+    grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" "$yr_tmp" |
+    sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
+  }
+
+  if [[ $cc == "1" ]]
+  then
+    cloud_cover=$(
+      grep -oE "[[:digit:]]*% cloud cover" "$yr_tmp" |
+    sed "s/% cloud cover//g")
+  fi
+
+  if [[ $uv == "1" ]]
+  then
+    uv_rad=$(
+      grep --no-group-separator -A 3 "UV forecast" "$yr_tmp" |
+      awk 'FNR == 4 {print}'|
+    grep -o "[[:digit:]]")
+  fi
+  # The forecast shows the UV index for the selected hour. It does not take the cloud cover into account.
+  #
+  # The UV index indicates how strong the UV radiation from the sun is.
+  # 1-2	Low
+  # 3–5	Moderate
+  # 6–7	High
+  # 8–10	Very high
+  # 11+	Extreme
+  case $uv_rad in
+    0)
+      uv_radiation="($uv_rad) No UV radiation"
+      uv_scale=100
+      ;;
+    1)
+      uv_radiation="($uv_rad) Low"
+      uv_scale=95
+      ;;
+    2)
+      uv_radiation="($uv_rad) Low"
+      uv_scale=85
+      ;;
+    3)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=75
+      ;;
+    4)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=65
+      ;;
+    5)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=55
+      ;;
+    6)
+      uv_radiation="($uv_rad) High"
+      uv_scale=45
+      ;;
+    7)
+      uv_radiation="($uv_rad) High"
+      uv_scale=35
+      ;;
+    8)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=25
+      ;;
+    9)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=15
+      ;;
+    10)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=5
+      ;;
+    11)
+      uv_radiation="($uv_rad) Extreme"
+      uv_scale=0
+      ;;
+  esac
+
+  sunrise=$(sun rise)
+  sunset=$(sun set)
+
+  sunrise-transition() {
+    date -d"$1$2 minutes $sunrise" '+%H:%M'
+  }
+
+  sunset-transition() {
+    date -d"$1$2 minutes $sunset" '+%H:%M'
+  }
+  wget -q --spider $yr_url
   if [ $? -eq 0 ]
   then
     echo "yr.no is Online."
@@ -231,6 +238,11 @@ yr() {
     echo "yr.no is Offline"
   fi
 }
+
+if [[ $yr == "1" ]]
+then
+  yr
+fi
 
 night-light-temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
@@ -272,7 +284,6 @@ sed 's|uint32 ||g')
 auto-run() {
   while true
   do
-    yr
     # Current seconds
     secNow=$(date +"%s")
     secSunrise=$(date --date="$sunrise today" +%s)
@@ -498,7 +509,7 @@ usage() {
   printf "  --light-temperature | -lt          show light-temperature\\n"
   printf "  --dark-toggle       | -dt          toggle dark/light color scheme\\n"
   printf "  --auto-run          | -ar          auto run\\n"
-  printf "  --config            | -c           run config dialog"
+  printf "  --config            | -c           run config dialog\\n"
   printf "  --install           | -i           install\\n"
   printf "  --uninstall         | -u           uninstall\\n"
   printf "\\n"
