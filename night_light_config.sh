@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cfg_file=$HOME/.github/night_light/.night_light_config
+cfg_file=$HOME/.night_light/.night_light_config
 # Read hidden configuration file with entries separated by " " into array
 IFS=' ' read -ra CfgArr < $cfg_file
 
