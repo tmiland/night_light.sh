@@ -52,6 +52,10 @@ fi
 config_folder=$HOME/.night_light
 cfg_sh_file=$config_folder/night_light_config.sh
 cfg_file=$config_folder/.night_light_config
+if ! [ -d "$config_folder" ]
+then
+  mkdir -p "$config_folder"
+fi
 # Read hidden configuration file with entries separated by " " into array
 if [[ -f $cfg_file ]]
 then
