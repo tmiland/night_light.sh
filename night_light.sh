@@ -462,9 +462,14 @@ install() {
   systemctl --user enable night_light.service &&
   systemctl --user start night_light.service &&
   systemctl --user status night_light.service --no-pager
-  echo "Install finished, enjoy..."
-  echo "You can resume screen with 'screen -r night_light' "
-  echo "Restart service with 'systemdctl --user restart night_light' "
+  if [ $? -eq 0 ]
+  then
+    echo "Install finished, enjoy..."
+    echo "You can resume screen with 'screen -r night_light' "
+    echo "Restart service with 'systemdctl --user restart night_light' "
+  else
+    echo "ERROR: Some thing went wong..."
+  fi
 }
 
 uninstall() {
