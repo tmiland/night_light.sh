@@ -49,52 +49,13 @@ If called without arguments, uses 24 hour clock.
 
 ```
 
-
-  - Or install with crontab `contab -e` and add to new line
-```bash
-1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
-```
-
-Or with systemd:
-`/etc/systemd/system/timers.target.wants/night_light.timer`
-```bash
-[Unit]
-Description=Automatically adjusts night light based on local time.
-Requires=night_light.service
-
-[Timer]
-Unit=night_light.service
-OnCalendar=hourly
-AccuracySec=60s
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-`/etc/systemd/system/night_light.service`
-```bash
-[Unit]
-Description=Logs system statistics to the systemd journal
-Wants=night_light.timer
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash $HOME/.scripts/night_light.sh
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-systemctl enable night_light.{service,timer} && \
-systemctl start night_light.{service,timer} && \
-systemctl status night_light.{service,timer}
-```
-
 ## Compatibility and Requirements
 
  - Gnome desktop
+ - screen
+ - lynx
+ - wget
+ - curl
 
 ## Credits
 
