@@ -49,8 +49,9 @@ fi
 # Symlink: ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
 # Crontab: 1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 # Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
-cfg_sh_file=$HOME/.night_light/night_light_config.sh
-cfg_file=$HOME/.night_light/.night_light_config
+config_folder=$HOME/.night_light
+cfg_sh_file=$config_folder/night_light_config.sh
+cfg_file=$config_folder/.night_light_config
 # Read hidden configuration file with entries separated by " " into array
 if [[ -f $cfg_file ]]
 then
@@ -93,7 +94,7 @@ fi
 yr_url=https://www.yr.no
 yr_location_url=$yr_url/en/other-conditions/$yr
 # Use home folder for tmp file Persistence
-nl_folder=$HOME/.night_light
+nl_folder=$config_folder
 yr_tmp="$nl_folder"/sun.tmp
 if ! [ -f "$yr_tmp" ]
 then
@@ -401,21 +402,98 @@ auto-run() {
   done # End of forever loop
 }
 
+install() {
+  url=https://github.com/tmiland/night_light/raw/main
+  night_light_config_url=$url/.night_light_config
+  night_light_config_sh_url=$url/night_light_config.sh
+  night_light_url=$url/night_light.sh
+  night_light_service=$url/night_light.service
+  systemd_user_folder=$HOME/.config/systemd/user
+  if ! [[ -d $systemd_user_folder ]]
+  then
+    mkdir -p "$systemd_user_folder"
+  fi
+  local_bin_folder=$HOME/.local/bin
+  if ! [[ -d $local_bin_folder ]]
+  then
+    mkdir -p "$local_bin_folder"
+  fi
+
+  SUDO="sudo"
+  INSTALL="apt-get -o Dpkg::Progress-Fancy="1" install -qq"
+  UPDATE="apt-get -o Dpkg::Progress-Fancy="1" update -qq"
+  PKGCHK="dpkg -s"
+
+  PKGS="screen libnotify-bin"
+
+  echo -e "Setting up Dependencies"
+  if ! ${PKGCHK} ${PKGS} >/dev/null 2>&1; then
+    ${UPDATE}
+    for i in ${PKGS}; do
+      ${SUDO} ${INSTALL} $i 2> /dev/null
+    done
+  fi
+
+  download_files() {
+    if [[ $(command -v 'curl') ]]; then
+      curl -fsSLk "$night_light_config_url" > "${config_folder}"/.night_light_config
+      curl -fsSLk "$night_light_config_sh_url" > "${config_folder}"/night_light-config.sh
+      curl -fsSLk "$night_light_url" > "${config_folder}"/night_light.sh
+      curl -fsSLk "$night_light_service" > "$systemd_user_folder"/night_light.service
+    elif [[ $(command -v 'wget') ]]; then
+      wget -q "$night_light_config_url" -O "${config_folder}"/.night_light_config
+      wget -q "$night_light_config_sh_url" -O "${config_folder}"/night_light-config.sh
+      wget -q "$night_light_url" -O "${config_folder}"/night_light.sh
+      wget -q "$night_light_service" -O "$systemd_user_folder"/night_light.service
+    else
+      echo -e "${RED}${ERROR} This script requires curl or wget.\nProcess aborted${NC}"
+      exit 0
+    fi
+  }
+  echo ""
+  read -n1 -r -p "Night Light is ready to be installed, press any key to continue..."
+  echo ""
+  download_files
+  ln -sfn "$HOME"/.night_light/night_light.sh "$HOME"/.local/bin/night_light
+  chmod +x "$HOME"/.night_light/night_light.sh
+  chmod +x "$HOME"/.night_light/night_light-config.sh
+  "$HOME"/.local/bin/night_light -c
+  sed -i "s|/usr/local/bin/night_light|$HOME/.local/bin/night_light|g" "$HOME"/.config/systemd/user/night_light.service
+  systemctl --user enable night_light.service &&
+  systemctl --user start night_light.service &&
+  systemctl --user status night_light.service --no-pager
+  echo "Install finished, enjoy..."
+  echo "You can resume screen with 'screen -r night_light' "
+  echo "Restart service with 'systemdctl --user restart night_light' "
+}
+
+uninstall() {
+  echo ""
+  read -n1 -r -p "Night Light is ready to be installed, press any key to continue..."
+  echo ""
+  rm -rf "$config_folder"
+  rm -rf "$HOME"/.local/bin/night_light
+  systemctl --user disable night_light.service
+  rm -rf "$HOME"/.config/systemd/user/night_light.service
+  echo "Uninstall finished, have a good day..."
+}
+
 usage() {
   # shellcheck disable=SC2046
   printf "Usage: %s %s [options]\\n" "" $(basename "$0")
   echo
   echo "  If called without arguments, uses 24 hour clock."
   echo
-  printf "  --24hour            | -24           use 24 hour clock\\n"
-  printf "  --12hour            | -12           use 12 hour clock\\n"
-  printf "  --light-enabled     | -le           turn on/off (true/false)\\n"
-  printf "  --light-temperature | -lt           show light-temperature\\n"
-  printf "  --dark-toggle       | -dt           toggle dark/light color scheme\\n"
-  printf "  --auto-run          | -ar           auto run\\n"
-  printf "  --config            | -c            run config dialog"
+  printf "  --24hour            | -24          use 24 hour clock\\n"
+  printf "  --12hour            | -12          use 12 hour clock\\n"
+  printf "  --light-enabled     | -le          turn on/off (true/false)\\n"
+  printf "  --light-temperature | -lt          show light-temperature\\n"
+  printf "  --dark-toggle       | -dt          toggle dark/light color scheme\\n"
+  printf "  --auto-run          | -ar          auto run\\n"
+  printf "  --config            | -c           run config dialog"
+  printf "  --install           | -i           install\\n"
+  printf "  --uninstall         | -u           uninstall\\n"
   printf "\\n"
-  printf "  Crontab: 1 * * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1\\n"
   echo
 }
 
@@ -450,6 +528,14 @@ do
       ;;
     --config | -c)
       . "$cfg_sh_file"
+      exit 0
+      ;;
+    --install | -i)
+      install
+      exit 0
+      ;;
+    --uninstall | -u)
+      uninstall
       exit 0
       ;;
     -*|--*)
