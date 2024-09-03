@@ -403,7 +403,7 @@ auto-run() {
 }
 
 install() {
-  url=https://github.com/tmiland/night_light/raw/main
+  url=https://github.com/tmiland/night_light.sh/raw/main
   night_light_config_url=$url/.night_light_config
   night_light_config_sh_url=$url/night_light_config.sh
   night_light_url=$url/night_light.sh
