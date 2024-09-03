@@ -459,7 +459,7 @@ install() {
   download_files
   ln -sfn "$HOME"/.night_light/night_light.sh "$HOME"/.local/bin/night_light
   chmod +x "$HOME"/.night_light/night_light.sh
-  chmod +x "$HOME"/.night_light/night_light-config.sh
+  chmod +x "$HOME"/.night_light/night_light_config.sh
   "$HOME"/.local/bin/night_light -c
   sed -i "s|/usr/local/bin/night_light|$HOME/.local/bin/night_light|g" "$HOME"/.config/systemd/user/night_light.service
   systemctl --user enable night_light.service &&
