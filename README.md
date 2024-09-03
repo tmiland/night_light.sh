@@ -51,6 +51,7 @@ If called without arguments, uses 24 hour clock.
 
 ### Compatibility and Requirements
 
+ - Debian
  - Gnome desktop
  - screen
  - lynx
