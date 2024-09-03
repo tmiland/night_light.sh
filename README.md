@@ -49,7 +49,7 @@ If called without arguments, uses 24 hour clock.
 
 ```
 
-## Compatibility and Requirements
+### Compatibility and Requirements
 
  - Gnome desktop
  - screen
@@ -57,12 +57,12 @@ If called without arguments, uses 24 hour clock.
  - wget
  - curl
 
-## Credits
+### Credits
 
 - [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
 - [dark-toggle](https://github.com/rifazn/dark-toggle)
 
-#### Disclaimer 
+### Disclaimer 
 
 *** ***Use at own risk*** ***
 
