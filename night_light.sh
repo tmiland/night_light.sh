@@ -209,7 +209,7 @@ sunset-transition() {
   date -d"$1$2 minutes $sunset" '+%H:%M'
 }
 
-if [ $? -eq 0 ]
+if [ $? -eq 0 ] && [[ -d $config_folder ]]
 then
   echo "yr.no is Online."
   echo "Sunrise: $sunrise Sunset: $sunset"
