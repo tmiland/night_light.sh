@@ -4,47 +4,48 @@
 ## Script to adjust night light in gnome
 
 - Automatically adjusts night light based on local time. (default 24 hour clock)
-  ~~Use: -12 as argument to set to 12 hours, or set `CLOCK=12` in script.~~ (WIP)
 - Toggles dark/light mode based on time of day (light in the morning and dark in the night)
   - Using [dark-toggle](https://github.com/rifazn/dark-toggle)
-  
+- Takes local cloud cover and UV radiation into account
+
+Output looks like this
+```bash
+yr.no is Online.
+Sunrise: 06:26 Sunset: 20:21
+Cloud cover past 5 minutes: 100%
+UV Index past 5 minutes: (1) Low
+UV Index is added to Cloud cover
+On a inverted scale from 100-0
+Calculation: 5750-(100+95)=5555
+Current temperature: 5555
+```
 ### Installation
 
-Download and symlink script
+Download and install
 
 ```bash
-curl -sSL -o ~/.scripts/night_light.sh  https://raw.githubusercontent.com/tmiland/night_light.sh/main/night_light.sh
+wget -qO- https://github.com/tmiland/night_light.sh/raw/main/night_light.sh | bash -s -- -i
 ```
 
-Symlink:
-  ```bash
-   ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light
-  ```
-  Now use 
-  ```bash
-  $ night_ligh <value>
-  ```
-  to set temp based on values:
+### Config options
 
-  ```bash
-  1000 — Lowest value (super warm/red)
-  4000 — Default night light on temperature
-  5500 — Balanced night light temperature
-  6500 — Default night light off temperature
-  10000 — Highest value (super cool/blue)
-  ```
-  Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
+<a href="https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/settings.png">![settings](https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/settings.png)</a>
+
 
 ```bash
 Usage: [options]
 
 If called without arguments, uses 24 hour clock.
 
- --24hour            | -24           use 24 hour clock
- --12hour            | -12           use 12 hour clock (WIP) (NOT WORKING)
- --light-enabled     | -le           turn on/off (true/false)
- --light-temperature | -lt           show light-temperature
- --dark-toggle       | -dt           toggle dark/light color scheme
+--24hour            | -24          use 24 hour clock
+--12hour            | -12          use 12 hour clock
+--light-enabled     | -le          turn on/off (true/false)
+--light-temperature | -lt          show light-temperature
+--dark-toggle       | -dt          toggle dark/light color scheme
+--auto-run          | -ar          auto run
+--config            | -c           run config dialog
+--install           | -i           install
+--uninstall         | -u           uninstall
 
 ```
 
