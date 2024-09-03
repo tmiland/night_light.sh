@@ -49,37 +49,153 @@ fi
 # Symlink: ln -sfn ~/.scripts/night_light.sh ~/.local/bin/night_light.sh
 # Crontab: 1 1 * * * bash ~/.scripts/night_light.sh > /dev/null 2>&1
 # Based on source: https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2
+cfg_sh_file=$HOME/.night_light/night_light_config.sh
+cfg_file=$HOME/.night_light/.night_light_config
+# Read hidden configuration file with entries separated by " " into array
+if [[ -f $cfg_file ]]
+then
+  IFS=' ' read -ra cfg_array < "$cfg_file"
+  # Day time maximum display brightness
+  max_bright="${cfg_array[0]}"
+  # Transition minutes after sunrise to maximum
+  after_sunrise="${cfg_array[1]}"
+  # Night time minimum display brightness
+  min_bright="${cfg_array[2]}"
+  # Transition minutes before sunset to minimum
+  before_sunset="${cfg_array[3]}"
+  # Cloud cover
+  cc="${cfg_array[4]}"
+  # UV Index
+  uv="${cfg_array[5]}"
+  # Color scheme
+  cs="${cfg_array[6]}"
+  # yr.no location (E.g: 1-68562/Norway/Telemark/Tinn/Rjukan)
+  yr="${cfg_array[7]}"
+else
+  # Day time maximum display brightness
+  max_bright=5750
+  # Transition minutes after sunrise to maximum
+  after_sunrise=90
+  # Night time minimum display brightness
+  min_bright=2350
+  # Transition minutes before sunset to minimum
+  before_sunset=90
+  # Cloud cover
+  cc=1
+  # UV Index
+  uv=1
+  # Change color scheme
+  cs=1
+  # yr.no
+  yr="1-68562/Norway/Telemark/Tinn/Rjukan"
+fi
 
-# Cloud cover
-cc=1
-# yr.no
-yr="1-68562/Norway/Telemark/Tinn/Rjukan"
-yr_url=https://www.yr.no/en/other-conditions/$yr
-yr_tmp=/tmp/sun.tmp
+yr_url=https://www.yr.no
+yr_location_url=$yr_url/en/other-conditions/$yr
+# Use home folder for tmp file Persistence
+nl_folder=$HOME/.night_light
+yr_tmp="$nl_folder"/sun.tmp
+if ! [ -f "$yr_tmp" ]
+then
+  mkdir -p "$nl_folder" && touch "$yr_tmp"
+fi
 # Crawler
 pkg=lynx
-
+# Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
+# 1000 — Lowest value (super warm/red)
+# 4000 — Default night light on temperature
+# 5500 — Balanced night light temperature
+# 6500 — Default night light off temperature
+# 10000 — Highest value (super cool/blue)
+temperature_morning="4500"
+temperature_noon="$max_bright"
+temperature_evening="3500"
+temperature_night="$min_bright"
 
 if ! dpkg -s $pkg >/dev/null 2>&1
 then
   apt install $pkg
 fi
 
-wget -q --spider https://www.yr.no
+wget -q --spider $yr_url
 
 sun() {
-  cat $yr_tmp |
-  grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" |
+  grep -oE "Sun$1 [[:digit:]]+:[[:digit:]]+" "$yr_tmp" |
   sed -n "s/.*Sun$1 *\([^ ]*.*\)/\1/p"
 }
 
 if [[ $cc == "1" ]]
 then
   cloud_cover=$(
-    cat $yr_tmp |
-    grep -oE "[[:digit:]]*% cloud cover" |
+    grep -oE "[[:digit:]]*% cloud cover" "$yr_tmp" |
   sed "s/% cloud cover//g")
 fi
+
+if [[ $uv == "1" ]]
+then
+  uv_rad=$(
+    grep --no-group-separator -A 3 "UV forecast" "$yr_tmp" |
+    awk 'FNR == 4 {print}'|
+  grep -o "[[:digit:]]")
+fi
+# The forecast shows the UV index for the selected hour. It does not take the cloud cover into account.
+#
+# The UV index indicates how strong the UV radiation from the sun is.
+# 1-2	Low
+# 3–5	Moderate
+# 6–7	High
+# 8–10	Very high
+# 11+	Extreme
+case $uv_rad in
+  0)
+    uv_radiation="($uv_rad) No UV radiation"
+    uv_scale=100
+    ;;
+  1)
+    uv_radiation="($uv_rad) Low"
+    uv_scale=95
+    ;;
+  2)
+    uv_radiation="($uv_rad) Low"
+    uv_scale=85
+    ;;
+  3)
+    uv_radiation="($uv_rad) Moderate"
+    uv_scale=75
+    ;;
+  4)
+    uv_radiation="($uv_rad) Moderate"
+    uv_scale=65
+    ;;
+  5)
+    uv_radiation="($uv_rad) Moderate"
+    uv_scale=55
+    ;;
+  6)
+    uv_radiation="($uv_rad) High"
+    uv_scale=45
+    ;;
+  7)
+    uv_radiation="($uv_rad) High"
+    uv_scale=35
+    ;;
+  8)
+    uv_radiation="($uv_rad) Very high"
+    uv_scale=25
+    ;;
+  9)
+    uv_radiation="($uv_rad) Very high"
+    uv_scale=15
+    ;;
+  10)
+    uv_radiation="($uv_rad) Very high"
+    uv_scale=5
+    ;;
+  11)
+    uv_radiation="($uv_rad) Extreme"
+    uv_scale=0
+    ;;
+esac
 
 sunrise=$(sun rise)
 sunset=$(sun set)
@@ -99,60 +215,46 @@ then
   if [[ $cc == "1" ]]; then
     echo "Cloud cover past 5 minutes: $cloud_cover%"
   fi
-  $pkg --dump $yr_url > $yr_tmp
+  if [[ $uv == "1" ]]; then
+    echo "UV Index past 5 minutes: $uv_radiation"
+  fi
+  if [[ $cc == "1" ]] && [[ $uv == "1" ]]
+  then
+    echo "UV Index is added to Cloud cover"
+    echo "On a inverted scale from 100-0"
+    echo "Calculation: $max_bright-($cloud_cover+$uv_scale)="$(( $max_bright - ($cloud_cover + $uv_scale) ))""
+  fi
+  $pkg --dump "$yr_location_url" > "$yr_tmp"
 else
   echo "yr.no is Offline"
 fi
-
-cfg_file=/home/tommy/.github/night_light/.night_light_config
-# Read hidden configuration file with entries separated by " " into array
-IFS=' ' read -ra cfg_array < $cfg_file
-max_bright="${cfg_array[0]}"
-after_sunrise="${cfg_array[1]}"
-min_bright="${cfg_array[2]}"
-before_sunset="${cfg_array[3]}"
-
-# Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
-# 1000 — Lowest value (super warm/red)
-# 4000 — Default night light on temperature
-# 5500 — Balanced night light temperature
-# 6500 — Default night light off temperature
-# 10000 — Highest value (super cool/blue)
-temperature_morning="4500"
-temperature_noon="$max_bright"
-temperature_evening="3500"
-temperature_night="$min_bright"
-
-config() {
-  . ./night_light_config.sh
-}
 
 night-light-temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
 
-get_dark_toggle=$(
+get_color_scheme=$(
   [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
   echo dark ||
 echo light)
 
-dark_toggle() {
+color_scheme_toggle() {
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
 }
 
 toggle_dark() {
-  if ! [[ $get_dark_toggle == "dark" ]]
+  if [[ ! $get_color_scheme == "dark" ]]
   then
-    dark_toggle dark
+    color_scheme_toggle dark
   else
     echo "Color-scheme is already set to dark"
   fi
 }
 
 toggle_light() {
-  if ! [[ $get_dark_toggle == "light" ]]
+  if [[ ! $get_color_scheme == "light" ]]
   then
-    dark_toggle light
+    color_scheme_toggle light
   else
     echo "Color-scheme is already set to light"
   fi
@@ -177,17 +279,16 @@ auto-run() {
       if [[ $(find "$yr_tmp" -mmin +5 -print) ]]
       then
         echo "File $yr_tmp exists and is older than 5 minutes"
-        $pkg --dump $yr_url > $yr_tmp
+        $pkg --dump "$yr_location_url" > "$yr_tmp"
       elif ! [[ -f $yr_tmp ]]
       then
-        $pkg --dump $yr_url > $yr_tmp
+        $pkg --dump "$yr_location_url" > "$yr_tmp"
       fi
       if [[ $cc == "1" ]]
       then
         # yr.no cloud cover percentage
         cloud_cover=$(
-          cat $yr_tmp |
-          grep -oE "[[:digit:]]*% cloud cover" |
+          grep -oE "[[:digit:]]*% cloud cover" "$yr_tmp" |
         sed "s/% cloud cover//g")
       fi
     fi
@@ -230,44 +331,68 @@ auto-run() {
     # Are we between sunrise and full brightness?
     if [[ "$secNow" -gt "$secSunrise" ]] && [[ "$secNow" -lt "$secMaxCutoff" ]]
     then
+      # Set global Light Mode when half the time "after sunrise" time is reached
+      secBeforeSunriseLightMode=$(( $secSunrise + ( $after_sunrise / 2 ) ))
+      # Set global Light Mode
+      if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunriseLightMode ]]
+      then
+        toggle_light
+      fi
       # Current time - Sunrise = progress through transition
       secPast=$(( $secNow - $secSunrise ))
       calc-level-and-sleep "$after_sunrise" $secPast
       PastDuration=$(date +%H:%M:%S -ud @${secPast})
-      echo "Transitioning $PastDuration minutes after sunrise (Currently set to: $after_sunrise)."
-      toggle_light
+      echo "Transitioning $PastDuration minutes after sunrise (Currently set to: $after_sunrise minutes)."
       continue
     fi
     # Is it full bright day time?
     if [[ "$secNow" -gt "$secMaxCutoff" ]] && [[ "$secNow" -lt "$secMinStart" ]]
     then
+      # Set global Light Mode
+      if [[ $cs == "1" ]] && [[ ! $get_color_scheme == "light" ]]
+      then
+        toggle_light
+      fi
       # MAXIMUM: after sunrise transition AND before nightime transition
-      # Subtract yr.no cloud cover percentage from max brightness
-      if [[ $cc == "1" ]]
+      # Subtract yr.no cloud cover percentage from max brightness and UV Index
+      if [[ $cc == "1" ]] && [[ $uv == "1" ]]
+      then
+        set-and-sleep $(( $max_bright - ( $cloud_cover + $uv_scale ) ))
+        # Subtract yr.no cloud cover percentage from max brightness
+      elif [[ $cc == "1" ]]
       then
         set-and-sleep $(( $max_bright - $cloud_cover ))
       else
         set-and-sleep "$max_bright"
       fi
-      toggle_light
       continue
     fi
     # Are we between beginning to dim and sunset (full dim)?
     if [[ "$secNow" -gt "$secMinStart" ]] && [[ "$secNow" -lt "$secSunset" ]]
     then
+      secBeforeSunsetDarkMode=$(( $secSunset - ( $before_sunset / 2 ) ))
+      # Set global Dark Mode when half the time "before sunset" time is reached
+      if [[ $cs == "1" ]] && [[ $secBeforeSunsetDarkMode -gt $secNow ]]
+      then
+        toggle_dark
+      fi
       # Sunset - Current time = progress through transition
-      secBefore=$(( $secSunset - $secNow ))
-      calc-level-and-sleep "$before_sunset" $secBefore
-      BeforeDuration=$(date +%H:%M:%S -ud @${secBefore})
-      echo "Transitioning $BeforeDuration minutes before sunset (Currently set to: $before_sunset)."
+      secBeforeSunset=$(( $secSunset - $secNow ))
+      calc-level-and-sleep "$before_sunset" $secBeforeSunset
+      BeforeDuration=$(date +%H:%M:%S -ud @${secBeforeSunset})
+      echo "Transitioning $BeforeDuration minutes before sunset (Currently set to: $before_sunset minutes)."
       continue
     fi
     # Is it night time?
     if [[ "$secNow" -gt "$secSunset" ]] || [[ "$secNow" -lt "$secSunrise" ]]
     then
+      # Set global Light Mode
+      if [[ $cs == "1" ]]
+      then
+        toggle_dark
+      fi
       # MINIMUM: after sunset or before sunrise nightime setting
       set-and-sleep "$min_bright"
-      toggle_dark
       continue
     fi
     # At this stage brightness was set with manual override outside this program
@@ -324,7 +449,7 @@ do
       shift
       ;;
     --config | -c)
-      config
+      . "$cfg_sh_file"
       exit 0
       ;;
     -*|--*)
