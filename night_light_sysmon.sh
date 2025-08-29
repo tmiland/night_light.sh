@@ -12,7 +12,7 @@
 # fi
 
 if command -v gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature >/dev/null 2>&1; then
-  Brightness=$(gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature | sed 's|uint32||g')
+  Brightness=$(gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature | sed 's|uint32 ||g')
   systray="$systray Brightness: $Brightness"
 else
   systray="$systray Brightness: OFF"
