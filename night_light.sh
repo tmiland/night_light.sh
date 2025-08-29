@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2004,SC2317,SC2053
 
-## Author: Tommy Miland (@tmiland) - Copyright (c) 2024
+## Author: Tommy Miland (@tmiland) - Copyright (c) 2025
 
 
 ######################################################################
@@ -11,13 +11,13 @@
 ####                   Maintained by @tmiland                     ####
 ######################################################################
 
-# VERSION='1.0.0' # Must stay on line 14 for updater to fetch the numbers
+VERSION='1.0.0' # Must stay on line 14 for updater to fetch the numbers
 
 #------------------------------------------------------------------------------#
 #
 # MIT License
 #
-# Copyright (c) 2024 Tommy Miland
+# Copyright (c) 2025 Tommy Miland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
