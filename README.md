@@ -30,6 +30,9 @@ wget -qO- https://github.com/tmiland/night_light.sh/raw/main/night_light.sh | ba
 
 <a href="https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/settings.png">![settings](https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/settings.png)</a>
 
+### notification
+
+<a href="https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/notification.png">![notification](https://raw.githubusercontent.com/tmiland/night_light.sh/main/assets/notification.png)</a>
 
 ```bash
 Usage: [options]
