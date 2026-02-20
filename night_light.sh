@@ -248,46 +248,43 @@ then
   yr
 fi
 
-night-light-temperature() {
+night_light_temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
-
-get_color_scheme=$(
-  [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
-  echo dark ||
-echo light)
 
 color_scheme_toggle() {
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
 }
 
-toggle_dark() {
-  if [[ ! $get_color_scheme == "dark" ]]
-  then
-    color_scheme_toggle dark
-  else
-    echo "Color-scheme is already set to dark"
-  fi
-}
-
-toggle_light() {
-  if [[ ! $get_color_scheme == "light" ]]
-  then
-    color_scheme_toggle light
-  else
-    echo "Color-scheme is already set to light"
-  fi
-}
-
-# Source: https://askubuntu.com/a/894470
-# global variable
-LastSetting=$(
-  gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature |
-sed 's|uint32 ||g')
-
 auto-run() {
   while true
   do
+    get_color_scheme=$(
+      [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
+      echo dark ||
+    echo light)
+    toggle_dark() {
+      if [[ ! $get_color_scheme == "dark" ]]
+      then
+        color_scheme_toggle dark
+      else
+        echo "Color-scheme is already set to dark"
+      fi
+    }
+
+    toggle_light() {
+      if [[ ! $get_color_scheme == "light" ]]
+      then
+        color_scheme_toggle light
+      else
+        echo "Color-scheme is already set to light"
+      fi
+    }
+    # Source: https://askubuntu.com/a/894470
+    # global variable
+    LastSetting=$(
+      gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature |
+    sed 's|uint32 ||g')
     # Current seconds
     secNow=$(date +"%s")
     secSunrise=$(date --date="$sunrise today" +%s)
@@ -318,7 +315,7 @@ auto-run() {
         # sudo sh -c "echo $1 | sudo tee $backlight"
         # echo "$1" > "/tmp/display-current-brightness"
         LastSetting="$1"
-        night-light-temperature "$1"
+        night_light_temperature "$1"
         echo "Temperature set to ($1)"
       fi
       sleep 60
@@ -350,7 +347,7 @@ auto-run() {
     # Are we between sunrise and full brightness?
     if [[ "$secNow" -gt "$secSunrise" ]] && [[ "$secNow" -lt "$secMaxCutoff" ]]
     then
-      # Set global Light Mode when half the time "after sunrise" time is reached
+      # Set global Light Mode when half the time "after sunrise" is reached
       secBeforeSunriseLightMode=$(( $secSunrise + ( $after_sunrise / 2 ) ))
       # Set global Light Mode
       if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunriseLightMode ]]
@@ -390,7 +387,7 @@ auto-run() {
     if [[ "$secNow" -gt "$secMinStart" ]] && [[ "$secNow" -lt "$secSunset" ]]
     then
       secBeforeSunsetDarkMode=$(( $secSunset - ( $before_sunset / 2 ) ))
-      # Set global Dark Mode when half the time "before sunset" time is reached
+      # Set global Dark Mode when half the time "before sunset" is reached
       if [[ $cs == "1" ]] && [[ $secBeforeSunsetDarkMode -gt $secNow ]]
       then
         toggle_dark
@@ -585,29 +582,29 @@ night=$(sunset-transition + "$before_sunset")
 night_light() {
   if ! [[ $AR == "1" ]] && [[ -n "${1}" ]]
   then
-    night-light-temperature "${1}"
+    night_light_temperature "${1}"
     return
   elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]
   then
-    night-light-temperature $temperature_morning
+    night_light_temperature $temperature_morning
     echo "Temperature set to morning ($temperature_morning)"
     return
     toggle_light
   elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]
   then
-    night-light-temperature $temperature_noon
+    night_light_temperature $temperature_noon
     echo "Temperature set to noon ($temperature_noon)"
     return
     toggle_light
   elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]
   then
-    night-light-temperature $temperature_evening
+    night_light_temperature $temperature_evening
     echo "Temperature set to evening ($temperature_evening)"
     return
     toggle_dark
   elif [[ ! ( "$currenttime" < "$night" ) ]]
   then
-    night-light-temperature $temperature_night
+    night_light_temperature $temperature_night
     echo "Temperature set to night ($temperature_night)"
     return
     toggle_dark
