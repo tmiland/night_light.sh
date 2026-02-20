@@ -52,6 +52,10 @@ Usage: [options]
  - wget
  - curl
 
+### Extra
+
+  - [Script to install dynamic wallpapers in GNOME Desktop](https://github.com/tmiland/dynamic-wallpaper-installer) dark/light mode.
+
 ### Credits
 
 - [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
