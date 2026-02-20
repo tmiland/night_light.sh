@@ -54,6 +54,7 @@ Usage: [options]
  - lynx
  - wget
  - curl
+ - notify-send (libnotify-bin)
 
 ### Extra
 
@@ -64,6 +65,7 @@ Usage: [options]
 - [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
 - [dark-toggle](https://github.com/rifazn/dark-toggle)
 - [yr.no](https://yr.no) for sunrise/sunset times.
+- Dark/light icons: <a href="https://www.flaticon.com/free-icons/innovation" title="innovation icons">Innovation icons created by iconmas - Flaticon</a>
 
 ### Disclaimer 
 

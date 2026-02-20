@@ -261,6 +261,13 @@ then
   yr
 fi
 
+send_notification() {
+  notification_title="Night Light"
+  notification_img="$config_folder/assets/$2.png"
+  # Send notification to desktop
+  notify-send --app-name="$notification_title" --icon=$notification_img "$notification_title" "$1" 
+}
+
 night_light_temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
@@ -280,6 +287,9 @@ auto-run() {
       if [[ ! $get_color_scheme == "dark" ]]
       then
         color_scheme_toggle dark
+        if [[ $(command -v 'notify-send') ]]; then
+          send_notification "Color-scheme is set to dark" "dark"
+        fi
       else
         echo "Color-scheme is already set to dark"
       fi
@@ -289,6 +299,9 @@ auto-run() {
       if [[ ! $get_color_scheme == "light" ]]
       then
         color_scheme_toggle light
+        if [[ $(command -v 'notify-send') ]]; then
+          send_notification "Color-scheme is set to light" "light"
+        fi
       else
         echo "Color-scheme is already set to light"
       fi
@@ -463,18 +476,11 @@ install() {
   fi
 
   download_files() {
-    if [[ $(command -v 'curl') ]]; then
-      curl -fsSLk "$night_light_config_url" > "${config_folder}"/.night_light_config
-      curl -fsSLk "$night_light_config_sh_url" > "${config_folder}"/night_light_config.sh
-      curl -fsSLk "$night_light_url" > "${config_folder}"/night_light.sh
-      curl -fsSLk "$night_light_service" > "$systemd_user_folder"/night_light.service
-    elif [[ $(command -v 'wget') ]]; then
-      wget -q "$night_light_config_url" -O "${config_folder}"/.night_light_config
-      wget -q "$night_light_config_sh_url" -O "${config_folder}"/night_light_config.sh
-      wget -q "$night_light_url" -O "${config_folder}"/night_light.sh
-      wget -q "$night_light_service" -O "$systemd_user_folder"/night_light.service
+    echo "Cloning files to $config_folder..."
+    if [[ $(command -v 'git') ]]; then
+      git clone https://github.com/tmiland/night_light.sh.git "$config_folder" >/dev/null 2>&1
     else
-      echo -e "${RED}${ERROR} This script requires curl or wget.\nProcess aborted${NC}"
+      echo -e "This script requires git.\nProcess aborted"
       exit 0
     fi
   }
@@ -482,10 +488,16 @@ install() {
   read -n1 -r -p "Night Light is ready to be installed, press any key to continue..."
   echo ""
   download_files
-  ln -sfn "$HOME"/.night_light/night_light.sh "$HOME"/.local/bin/night_light
-  chmod +x "$HOME"/.night_light/night_light.sh
-  chmod +x "$HOME"/.night_light/night_light_config.sh
+  ln -sfn "$config_folder"/night_light.sh "$HOME"/.local/bin/night_light
+  chmod +x "$config_folder"/night_light.sh
+  chmod +x "$config_folder"/night_light_config.sh
   "$HOME"/.local/bin/night_light -c
+  echo "Enabling systemd service"
+  if ! [[ -d "$HOME"/.config/systemd/user ]]
+  then
+    mkdir -p "$HOME"/.config/systemd/user
+  fi
+  cp -rp  "$config_folder"/night_light.service "$HOME"/.config/systemd/user/night_light.service
   sed -i "s|/usr/local/bin/night_light|$HOME/.local/bin/night_light|g" "$HOME"/.config/systemd/user/night_light.service
   systemctl --user enable night_light.service &&
   systemctl --user start night_light.service &&
