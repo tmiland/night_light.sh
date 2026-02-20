@@ -5,7 +5,6 @@
 
 - Automatically adjusts night light based on local time. (default 24 hour clock)
 - Toggles dark/light mode based on time of day (light in the morning and dark in the night)
-  - Using [dark-toggle](https://github.com/rifazn/dark-toggle)
 - Takes local cloud cover and UV radiation into account
 
 Output looks like this
@@ -35,13 +34,8 @@ wget -qO- https://github.com/tmiland/night_light.sh/raw/main/night_light.sh | ba
 ```bash
 Usage: [options]
 
-If called without arguments, uses 24 hour clock.
-
---24hour            | -24          use 24 hour clock
---12hour            | -12          use 12 hour clock
 --light-enabled     | -le          turn on/off (true/false)
 --light-temperature | -lt          show light-temperature
---dark-toggle       | -dt          toggle dark/light color scheme
 --auto-run          | -ar          auto run
 --config            | -c           run config dialog
 --install           | -i           install
@@ -62,6 +56,7 @@ If called without arguments, uses 24 hour clock.
 
 - [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
 - [dark-toggle](https://github.com/rifazn/dark-toggle)
+- [yr.no](https://yr.no) for sunrise/sunset times.
 
 ### Disclaimer 
 
@@ -69,6 +64,6 @@ If called without arguments, uses 24 hour clock.
 
 ### License
 
-[![MIT License Image](https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/MIT_logo.svg/220px-MIT_logo.svg.png)](https://github.com/tmiland/night_light.sh/blob/master/LICENSE)
+[![MIT License Image](https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/MIT_logo_2003-2023.svg/330px-MIT_logo_2003-2023.svg.png?20250128192424)](https://github.com/tmiland/night_light.sh/blob/master/LICENSE)
 
 [MIT License](https://github.com/tmiland/night_light.sh/blob/master/LICENSE)

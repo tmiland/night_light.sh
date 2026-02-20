@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2004,SC2317,SC2053
 
-## Author: Tommy Miland (@tmiland) - Copyright (c) 2025
+## Author: Tommy Miland (@tmiland) - Copyright (c) 2026
 
 
 ######################################################################
@@ -17,7 +17,7 @@ VERSION='1.0.0' # Must stay on line 14 for updater to fetch the numbers
 #
 # MIT License
 #
-# Copyright (c) 2025 Tommy Miland
+# Copyright (c) 2026 Tommy Miland
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -78,6 +78,8 @@ then
   yr="${cfg_array[7]}"
   # yr.no location (E.g: /1-68562/Norway/Telemark/Tinn/Rjukan)
   yr_location="${cfg_array[8]}"
+  # Time format
+  time_format="${cfg_array[9]}"
 else
   # Day time maximum display brightness
   max_bright=5750
@@ -97,7 +99,18 @@ else
   yr=0
   # yr.no location
   yr_location="/1-68562/Norway/Telemark/Tinn/Rjukan"
+  # Time format
+  time_format=24
 fi
+
+case $time_format in
+  12)
+  time_format="%l"
+    ;;
+  24)
+  time_format="%H"
+    ;;
+esac
 
 # Crawler
 pkg=lynx
@@ -214,11 +227,11 @@ yr() {
   sunset=$(sun set)
 
   sunrise-transition() {
-    date -d"$1$2 minutes $sunrise" '+%H:%M'
+    date -d"$1$2 minutes $sunrise" "+$time_format:%M"
   }
 
   sunset-transition() {
-    date -d"$1$2 minutes $sunset" '+%H:%M'
+    date -d"$1$2 minutes $sunset" "+$time_format:%M"
   }
   wget -q --spider $yr_url
   if [ $? -eq 0 ]
@@ -357,7 +370,7 @@ auto-run() {
       # Current time - Sunrise = progress through transition
       secPast=$(( $secNow - $secSunrise ))
       calc-level-and-sleep "$after_sunrise" $secPast
-      PastDuration=$(date +%H:%M:%S -ud @${secPast})
+      PastDuration=$(date +$time_format:%M:%S -ud @${secPast})
       echo "Transitioning $PastDuration minutes after sunrise (Currently set to: $after_sunrise minutes)."
       continue
     fi
@@ -395,7 +408,7 @@ auto-run() {
       # Sunset - Current time = progress through transition
       secBeforeSunset=$(( $secSunset - $secNow ))
       calc-level-and-sleep "$before_sunset" $secBeforeSunset
-      BeforeDuration=$(date +%H:%M:%S -ud @${secBeforeSunset})
+      BeforeDuration=$(date +$time_format:%M:%S -ud @${secBeforeSunset})
       echo "Transitioning $BeforeDuration minutes before sunset (Currently set to: $before_sunset minutes)."
       continue
     fi
@@ -536,11 +549,6 @@ do
       echo "Current temperature: $LastSetting"
       exit 0
       ;;
-    --dark-toggle | -dt)
-      toggle_dark
-      toggle_light
-      shift
-      ;;
     --auto-run | -ar)
       AR=1
       auto-run
@@ -572,7 +580,7 @@ done
 
 set -- "${ARGS[@]}"
 
-currenttime=$(date +%H:%M)
+currenttime=$(date +$time_format:%M)
 # morning="$sunrise"
 morning=$(sunrise-transition + "$after_sunrise")
 noon="12:00"
