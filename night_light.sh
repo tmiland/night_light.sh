@@ -272,6 +272,10 @@ night_light_temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
 
+night_light_enabled() {
+  gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$1"
+}
+
 color_scheme_toggle() {
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
 }
@@ -286,6 +290,7 @@ auto-run() {
     toggle_dark() {
       if [[ ! $get_color_scheme == "dark" ]]
       then
+        night_light_enabled true
         color_scheme_toggle dark
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to dark" "dark"
@@ -298,6 +303,7 @@ auto-run() {
     toggle_light() {
       if [[ ! $get_color_scheme == "light" ]]
       then
+        night_light_enabled false
         color_scheme_toggle light
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to light" "light"
@@ -578,7 +584,7 @@ do
       uninstall
       exit 0
       ;;
-    -*|--*)
+    --*|-*)
       printf "Unrecognized option: $1\\n\\n"
       usage
       exit 1
