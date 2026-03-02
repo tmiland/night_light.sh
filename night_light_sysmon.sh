@@ -13,9 +13,9 @@
 
 if command -v gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature >/dev/null 2>&1; then
   Brightness=$(gsettings get org.gnome.settings-daemon.plugins.color night-light-temperature | sed 's|uint32 ||g')
-  systray="$systray Brightness: $Brightness"
+  systray="🔆 $Brightness"
 else
-  systray="$systray Brightness: OFF"
+  systray="Brightness: OFF"
 fi
 
 echo "$systray" # sysmon-indidicator will put echo string into systray for us.
