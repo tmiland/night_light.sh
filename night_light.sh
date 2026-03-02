@@ -283,6 +283,28 @@ color_scheme_toggle() {
 auto-run() {
   while true
   do
+    # Source: https://askubuntu.com/a/1088653
+    # get hour from sunset
+    night_light_schedule_from_hour=$(echo "$sunset" | grep -oE ".[[:digit:]]:" | sed "s|:||g")
+    # get minutes from sunset
+    night_light_schedule_from_min=$(echo "$sunset" | grep -oE ":[[:digit:]]." | sed "s|:||g")
+    # divide by 60
+    night_light_schedule_from_min=$( bc <<< "scale=9; $night_light_schedule_from_min / 60" )
+    # Put together in a function E.G: 17:55 turns into 17.916666666
+    set_night_light_schedule_from() {
+      gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-from "$night_light_schedule_from_hour$night_light_schedule_from_min"
+    }
+    # get hour from sunset
+    night_light_schedule_to_hour=$(echo "$sunrise" | grep -oE "[[:digit:]]:" | sed "s|:||g")
+    # get minutes from sunset
+    night_light_schedule_to_min=$(echo "$sunrise" | grep -oE ":[[:digit:]]." | sed "s|:||g")
+    # divide by 60
+    night_light_schedule_to_min=$( bc <<< "scale=9; $night_light_schedule_to_min / 60" )
+    # Put together in a function E.G: 07:21 turns into 7.350000000
+    set_night_light_schedule_to () {
+      gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-to "$night_light_schedule_to_hour$night_light_schedule_to_min"
+    }
+    
     get_color_scheme=$(
       [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
       echo dark ||
@@ -292,6 +314,7 @@ auto-run() {
       then
         night_light_enabled true
         color_scheme_toggle dark
+        set_night_light_schedule_from
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to dark" "dark"
         fi
@@ -305,6 +328,7 @@ auto-run() {
       then
         night_light_enabled false
         color_scheme_toggle light
+        set_night_light_schedule_to
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to light" "light"
         fi

@@ -6,6 +6,7 @@
 - Automatically adjusts night light based on local time. (default 24 hour clock)
 - Toggles dark/light mode based on time of day (light in the morning and dark in the night)
 - Takes local cloud cover and UV radiation into account
+- Adjusts the schedule for night light based on sunset/sunrise
 
 Output looks like this
 ```bash
