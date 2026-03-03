@@ -112,6 +112,22 @@ case $time_format in
     ;;
 esac
 
+if [ -n "$yr_location" ]
+then
+  # Get position from location url
+  yr_location_position=$(echo "$yr_location" | cut -d '/' -f 1-2 | sed "s|/||g")
+  # Set yr location url in a function
+  yr_location_position() {
+    curl -s "https://www.yr.no/api/v0/locations/$yr_location_position?language=en" | jq -r ".position.$1"
+  }
+  # Get lat
+  yr_location_position_lat=$(yr_location_position lat)
+  # Get lon
+  yr_location_position_lon=$(yr_location_position lon)
+  # Set coordinates from yr
+  gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "(${yr_location_position_lat},${yr_location_position_lon})"
+fi
+
 # Crawler
 pkg=lynx
 # Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
