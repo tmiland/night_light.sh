@@ -146,7 +146,31 @@ then
   apt install $pkg
 fi
 
+if [[ $yr == "1" ]]
+then
 yr() {
+  wget -q --spider $yr_url
+  if [ $? -eq 0 ]
+  then
+    echo "yr.no is Online."
+    echo "Sunrise: $sunrise Sunset: $sunset"
+    if [[ $cc == "1" ]]; then
+      echo "Cloud cover past 5 minutes: $cloud_cover%"
+    fi
+    if [[ $uv == "1" ]]; then
+      echo "UV Index past 5 minutes: $uv_radiation"
+    fi
+    if [[ $cc == "1" ]] && [[ $uv == "1" ]]
+    then
+      echo "UV Index is added to Cloud cover"
+      echo "On a inverted scale from 100-0"
+      echo "Calculation: $max_bright-($cloud_cover+$uv_scale)="$(( $max_bright - ($cloud_cover + $uv_scale) ))""
+    fi
+    $pkg --dump "$yr_location_url" > "$yr_tmp"
+  else
+    echo "yr.no is Offline"
+  fi
+}
   # yr.no url
   yr_url=https://www.yr.no
   # yr.no location url
@@ -249,39 +273,24 @@ yr() {
   sunset-transition() {
     date -d"$1$2 minutes $sunset" "+$time_format:%M"
   }
-  wget -q --spider $yr_url
-  if [ $? -eq 0 ]
+  if [[ "$yr_arg" == "1" ]]
   then
-    echo "yr.no is Online."
-    echo "Sunrise: $sunrise Sunset: $sunset"
-    if [[ $cc == "1" ]]; then
-      echo "Cloud cover past 5 minutes: $cloud_cover%"
-    fi
-    if [[ $uv == "1" ]]; then
-      echo "UV Index past 5 minutes: $uv_radiation"
-    fi
-    if [[ $cc == "1" ]] && [[ $uv == "1" ]]
-    then
-      echo "UV Index is added to Cloud cover"
-      echo "On a inverted scale from 100-0"
-      echo "Calculation: $max_bright-($cloud_cover+$uv_scale)="$(( $max_bright - ($cloud_cover + $uv_scale) ))""
-    fi
-    $pkg --dump "$yr_location_url" > "$yr_tmp"
-  else
-    echo "yr.no is Offline"
+    yr
   fi
-}
-
-if [[ $yr == "1" ]]
-then
-  yr
 fi
 
 send_notification() {
+  notification="$1"
   notification_title="Night Light"
   notification_img="$config_folder/assets/$2.png"
   # Send notification to desktop
-  notify-send --app-name="$notification_title" --icon=$notification_img "$notification_title" "$1" 
+  notify-send \
+  --hint=string:sound-name:dialog-information \
+  --app-name="$notification_title" \
+  --app-icon=dialog-information-symbolic \
+  --icon="$notification_img" \
+  "$notification_title" \
+  "$notification"
 }
 
 night_light_temperature() {
@@ -575,12 +584,10 @@ usage() {
   echo
   echo "  If called without arguments, uses 24 hour clock."
   echo
-  printf "  --24hour            | -24          use 24 hour clock\\n"
-  printf "  --12hour            | -12          use 12 hour clock\\n"
   printf "  --light-enabled     | -le          turn on/off (true/false)\\n"
   printf "  --light-temperature | -lt          show light-temperature\\n"
-  printf "  --dark-toggle       | -dt          toggle dark/light color scheme\\n"
   printf "  --auto-run          | -ar          auto run\\n"
+  printf "  --yr                | -y           show yr.no information\\n"
   printf "  --config            | -c           run config dialog\\n"
   printf "  --install           | -i           install\\n"
   printf "  --uninstall         | -u           uninstall\\n"
@@ -612,6 +619,11 @@ do
       auto-run
       shift
       ;;
+    --yr | -y)
+      yr_arg=1
+      yr
+      shift
+      ;;
     --config | -c)
       . "$cfg_sh_file"
       exit 0
@@ -638,44 +650,44 @@ done
 
 set -- "${ARGS[@]}"
 
-currenttime=$(date +$time_format:%M)
-# morning="$sunrise"
-morning=$(sunrise-transition + "$after_sunrise")
-noon="12:00"
-evening=$(sunset-transition - "$before_sunset")
-night=$(sunset-transition + "$before_sunset")
-
-night_light() {
-  if ! [[ $AR == "1" ]] && [[ -n "${1}" ]]
-  then
-    night_light_temperature "${1}"
-    return
-  elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]
-  then
-    night_light_temperature $temperature_morning
-    echo "Temperature set to morning ($temperature_morning)"
-    return
-    toggle_light
-  elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]
-  then
-    night_light_temperature $temperature_noon
-    echo "Temperature set to noon ($temperature_noon)"
-    return
-    toggle_light
-  elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]
-  then
-    night_light_temperature $temperature_evening
-    echo "Temperature set to evening ($temperature_evening)"
-    return
-    toggle_dark
-  elif [[ ! ( "$currenttime" < "$night" ) ]]
-  then
-    night_light_temperature $temperature_night
-    echo "Temperature set to night ($temperature_night)"
-    return
-    toggle_dark
-  fi
-}
-
-night_light "$@"
-exit 0
+# currenttime=$(date +$time_format:%M)
+# # morning="$sunrise"
+# morning=$(sunrise-transition + "$after_sunrise")
+# noon="12:00"
+# evening=$(sunset-transition - "$before_sunset")
+# night=$(sunset-transition + "$before_sunset")
+# 
+# night_light() {
+#   if ! [[ $AR == "1" ]] || [[ "$yr_arg" == "1" ]] && [[ -n "${1}" ]]
+#   then
+#     night_light_temperature "${1}"
+#     return
+#   elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]
+#   then
+#     night_light_temperature $temperature_morning
+#     echo "Temperature set to morning ($temperature_morning)"
+#     return
+#     toggle_light
+#   elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]
+#   then
+#     night_light_temperature $temperature_noon
+#     echo "Temperature set to noon ($temperature_noon)"
+#     return
+#     toggle_light
+#   elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]
+#   then
+#     night_light_temperature $temperature_evening
+#     echo "Temperature set to evening ($temperature_evening)"
+#     return
+#     toggle_dark
+#   elif [[ ! ( "$currenttime" < "$night" ) ]]
+#   then
+#     night_light_temperature $temperature_night
+#     echo "Temperature set to night ($temperature_night)"
+#     return
+#     toggle_dark
+#   fi
+# }
+# 
+# night_light "$@"
+# exit 0
