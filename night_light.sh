@@ -130,16 +130,6 @@ fi
 
 # Crawler
 pkg=lynx
-# Source: https://www.omgubuntu.co.uk/2017/07/adjust-color-temperature-gnome-night-light
-# 1000 — Lowest value (super warm/red)
-# 4000 — Default night light on temperature
-# 5500 — Balanced night light temperature
-# 6500 — Default night light off temperature
-# 10000 — Highest value (super cool/blue)
-temperature_morning="4500"
-temperature_noon="$max_bright"
-temperature_evening="3500"
-temperature_night="$min_bright"
 
 if ! dpkg -s $pkg >/dev/null 2>&1
 then
@@ -305,31 +295,31 @@ color_scheme_toggle() {
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
 }
 
+# Source: https://askubuntu.com/a/1088653
+# get hour from sunset
+night_light_schedule_from_hour=$(echo "$sunset" | grep -oE ".[[:digit:]]:" | sed "s|:||g")
+# get minutes from sunset
+night_light_schedule_from_min=$(echo "$sunset" | grep -oE ":[[:digit:]]." | sed "s|:||g")
+# divide by 60
+night_light_schedule_from_min=$( bc <<< "scale=9; $night_light_schedule_from_min / 60" )
+# Put together in a function E.G: 17:55 turns into 17.916666666
+set_night_light_schedule_from() {
+  gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-from "$night_light_schedule_from_hour$night_light_schedule_from_min"
+}
+# get hour from sunset
+night_light_schedule_to_hour=$(echo "$sunrise" | grep -oE "[[:digit:]]:" | sed "s|:||g")
+# get minutes from sunset
+night_light_schedule_to_min=$(echo "$sunrise" | grep -oE ":[[:digit:]]." | sed "s|:||g")
+# divide by 60
+night_light_schedule_to_min=$( bc <<< "scale=9; $night_light_schedule_to_min / 60" )
+# Put together in a function E.G: 07:21 turns into 7.350000000
+set_night_light_schedule_to () {
+  gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-to "$night_light_schedule_to_hour$night_light_schedule_to_min"
+}
+
 auto-run() {
   while true
   do
-    # Source: https://askubuntu.com/a/1088653
-    # get hour from sunset
-    night_light_schedule_from_hour=$(echo "$sunset" | grep -oE ".[[:digit:]]:" | sed "s|:||g")
-    # get minutes from sunset
-    night_light_schedule_from_min=$(echo "$sunset" | grep -oE ":[[:digit:]]." | sed "s|:||g")
-    # divide by 60
-    night_light_schedule_from_min=$( bc <<< "scale=9; $night_light_schedule_from_min / 60" )
-    # Put together in a function E.G: 17:55 turns into 17.916666666
-    set_night_light_schedule_from() {
-      gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-from "$night_light_schedule_from_hour$night_light_schedule_from_min"
-    }
-    # get hour from sunset
-    night_light_schedule_to_hour=$(echo "$sunrise" | grep -oE "[[:digit:]]:" | sed "s|:||g")
-    # get minutes from sunset
-    night_light_schedule_to_min=$(echo "$sunrise" | grep -oE ":[[:digit:]]." | sed "s|:||g")
-    # divide by 60
-    night_light_schedule_to_min=$( bc <<< "scale=9; $night_light_schedule_to_min / 60" )
-    # Put together in a function E.G: 07:21 turns into 7.350000000
-    set_night_light_schedule_to () {
-      gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-to "$night_light_schedule_to_hour$night_light_schedule_to_min"
-    }
-    
     get_color_scheme=$(
       [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
       echo dark ||
@@ -499,11 +489,6 @@ auto-run() {
 }
 
 install() {
-  url=https://github.com/tmiland/night_light.sh/raw/main
-  night_light_config_url=$url/.night_light_config
-  night_light_config_sh_url=$url/night_light_config.sh
-  night_light_url=$url/night_light.sh
-  night_light_service=$url/night_light.service
   systemd_user_folder=$HOME/.config/systemd/user
   if ! [[ -d $systemd_user_folder ]]
   then
@@ -650,44 +635,4 @@ done
 
 set -- "${ARGS[@]}"
 
-# currenttime=$(date +$time_format:%M)
-# # morning="$sunrise"
-# morning=$(sunrise-transition + "$after_sunrise")
-# noon="12:00"
-# evening=$(sunset-transition - "$before_sunset")
-# night=$(sunset-transition + "$before_sunset")
-# 
-# night_light() {
-#   if ! [[ $AR == "1" ]] || [[ "$yr_arg" == "1" ]] && [[ -n "${1}" ]]
-#   then
-#     night_light_temperature "${1}"
-#     return
-#   elif [[ ! ( "$currenttime" < "$morning" || "$currenttime" > "$noon" ) ]]
-#   then
-#     night_light_temperature $temperature_morning
-#     echo "Temperature set to morning ($temperature_morning)"
-#     return
-#     toggle_light
-#   elif [[ ! ( "$currenttime" < "$noon" || "$currenttime" > "$evening" ) ]]
-#   then
-#     night_light_temperature $temperature_noon
-#     echo "Temperature set to noon ($temperature_noon)"
-#     return
-#     toggle_light
-#   elif [[ ! ( "$currenttime" < "$evening" || "$currenttime" > "$night" ) ]]
-#   then
-#     night_light_temperature $temperature_evening
-#     echo "Temperature set to evening ($temperature_evening)"
-#     return
-#     toggle_dark
-#   elif [[ ! ( "$currenttime" < "$night" ) ]]
-#   then
-#     night_light_temperature $temperature_night
-#     echo "Temperature set to night ($temperature_night)"
-#     return
-#     toggle_dark
-#   fi
-# }
-# 
-# night_light "$@"
-# exit 0
+exit 0
