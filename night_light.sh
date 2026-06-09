@@ -190,7 +190,7 @@ yr() {
   if [[ $uv == "1" ]]
   then
     uv_rad=$(
-      grep --no-group-separator -A 3 "UV forecast" "$yr_tmp" |
+      grep --no-group-separator -A 3 "UV index" "$yr_tmp" |
       awk 'FNR == 4 {print}'|
     grep -o "[[:digit:]]")
   fi
