@@ -282,17 +282,21 @@ send_notification() {
   "$notification_title" \
   "$notification"
 }
-
+# set night light temperature
 night_light_temperature() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-temperature "$1"
 }
-
+# set night light
 night_light_enabled() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-enabled "$1"
 }
-
+# toggle color scheme
 color_scheme_toggle() {
   gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
+}
+# toggle do not disturb
+dnd_toggle() {
+  gsettings set org.gnome.desktop.notifications show-banners "$1"
 }
 
 # Source: https://askubuntu.com/a/1088653
@@ -329,6 +333,7 @@ auto-run() {
       then
         night_light_enabled true
         color_scheme_toggle dark
+        dnd_toggle false
         set_night_light_schedule_from
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to dark" "dark"
@@ -343,6 +348,7 @@ auto-run() {
       then
         night_light_enabled false
         color_scheme_toggle light
+        dnd_toggle true
         set_night_light_schedule_to
         if [[ $(command -v 'notify-send') ]]; then
           send_notification "Color-scheme is set to light" "light"
