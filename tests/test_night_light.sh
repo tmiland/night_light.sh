@@ -262,6 +262,45 @@ test_unit_self_heal() {
   grep -q 'while true; do' "$repo/night_light.service"
 }
 
+test_branch_matrix() {
+  local expected actual
+
+  run_case matrix_0800 "$(date -d '2026-11-04 08:00' +%s)" "'prefer-dark'"
+  expected="'prefer-dark'"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  08:00 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_0825 "$(date -d '2026-11-04 08:25' +%s)" "'prefer-dark'"
+  expected="prefer-light"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  08:25 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_0900 "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
+  expected="prefer-light"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  09:00 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_1500 "$(date -d '2026-11-04 15:00' +%s)" "'prefer-light'"
+  expected="'prefer-light'"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  15:00 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_1553 "$(date -d '2026-11-04 15:53' +%s)" "'prefer-light'"
+  expected="prefer-dark"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  15:53 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_2000 "$(date -d '2026-11-04 20:00' +%s)" "'prefer-light'"
+  expected="prefer-dark"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  20:00 expected $expected, got $actual" >&2; return 1; }
+
+  run_case matrix_0030 "$(date -d '2026-11-04 00:30' +%s)" "'prefer-light'"
+  expected="prefer-dark"
+  actual=$(cat "$CASE_HOME/state/color-scheme")
+  [[ $actual == "$expected" ]] || { echo "  00:30 expected $expected, got $actual" >&2; return 1; }
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -283,6 +322,7 @@ all_tests=(
   test_uv_extreme
   test_yr_off
   test_unit_self_heal
+  test_branch_matrix
 )
 
 for name in "${all_tests[@]}"; do
