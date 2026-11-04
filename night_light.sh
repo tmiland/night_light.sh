@@ -103,6 +103,10 @@ else
   time_format=24
 fi
 
+# Defaults for optional yr.no-derived values
+cloud_cover=0
+uv_scale=0
+
 case $time_format in
   12)
   time_format="%l"
@@ -425,7 +429,7 @@ auto-run() {
     if [[ "$secNow" -gt "$secSunrise" ]] && [[ "$secNow" -lt "$secMaxCutoff" ]]
     then
       # Set global Light Mode when half the time "after sunrise" is reached
-      secBeforeSunriseLightMode=$(( $secSunrise + ( $after_sunrise / 2 ) ))
+      secBeforeSunriseLightMode=$(( $secSunrise + ( $after_sunrise * 60 / 2 ) ))
       # Set global Light Mode
       if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunriseLightMode ]]
       then
@@ -450,11 +454,11 @@ auto-run() {
       # Subtract yr.no cloud cover percentage from max brightness and UV Index
       if [[ $cc == "1" ]] && [[ $uv == "1" ]]
       then
-        set-and-sleep $(( $max_bright - ( $cloud_cover + $uv_scale ) ))
+        set-and-sleep $(( $max_bright - ( ${cloud_cover:-0} + ${uv_scale:-0} ) ))
         # Subtract yr.no cloud cover percentage from max brightness
       elif [[ $cc == "1" ]]
       then
-        set-and-sleep $(( $max_bright - $cloud_cover ))
+        set-and-sleep $(( $max_bright - ${cloud_cover:-0} ))
       else
         set-and-sleep "$max_bright"
       fi
@@ -463,9 +467,9 @@ auto-run() {
     # Are we between beginning to dim and sunset (full dim)?
     if [[ "$secNow" -gt "$secMinStart" ]] && [[ "$secNow" -lt "$secSunset" ]]
     then
-      secBeforeSunsetDarkMode=$(( $secSunset - ( $before_sunset / 2 ) ))
+      secBeforeSunsetDarkMode=$(( $secSunset - ( $before_sunset * 60 / 2 ) ))
       # Set global Dark Mode when half the time "before sunset" is reached
-      if [[ $cs == "1" ]] && [[ $secBeforeSunsetDarkMode -gt $secNow ]]
+      if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunsetDarkMode ]]
       then
         toggle_dark
       fi
