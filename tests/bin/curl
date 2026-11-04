@@ -1,0 +1,76 @@
+#!/bin/bash
+# Fixture-backed curl for the night_light test harness.
+printf '%s\n' "$*" >> "$CURL_LOG"
+
+url=""
+out=""
+expect_out=0
+zset=0
+for arg in "$@"; do
+  if [[ $expect_out == 1 ]]; then
+    out=$arg
+    expect_out=0
+    continue
+  fi
+  case $arg in
+    -o)
+      expect_out=1
+      ;;
+    -z)
+      zset=1
+      ;;
+    --*)
+      :
+      ;;
+    -*)
+      :
+      ;;
+    *)
+      url=$arg
+      ;;
+  esac
+done
+
+if [[ -n ${CURL_FAIL_MATCH:-} && $url == *"$CURL_FAIL_MATCH"* ]]; then
+  exit 22
+fi
+
+if [[ $zset == 1 && ${CURL_304:-0} == 1 ]]; then
+  exit 0
+fi
+
+fixture=""
+case $url in
+  *"/locations/"*)
+    fixture="$FIXTURES/location.json"
+    ;;
+  *"/sunrise/3.0/sun"*)
+    if [[ ${FIXTURE_MODE:-} == "polar" ]]; then
+      fixture="$FIXTURES/sun_null.json"
+    else
+      fixture="$FIXTURES/sun.json"
+    fi
+    ;;
+  *"/locationforecast/2.0/complete"*)
+    case ${FIXTURE_MODE:-} in
+      missing)
+        fixture="$FIXTURES/forecast_missing.json"
+        ;;
+      alt)
+        fixture="$FIXTURES/forecast_alt.json"
+        ;;
+      *)
+        fixture="$FIXTURES/forecast.json"
+        ;;
+    esac
+    ;;
+  *)
+    exit 22
+    ;;
+esac
+
+if [[ -n $out ]]; then
+  cp "$fixture" "$out"
+else
+  cat "$fixture"
+fi

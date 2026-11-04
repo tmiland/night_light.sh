@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "NOTIFY $*" >> "$GS_LOG"

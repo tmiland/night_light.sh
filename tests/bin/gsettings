@@ -1,0 +1,24 @@
+#!/bin/bash
+if [[ $1 == "get" ]]; then
+  case $3 in
+    color-scheme)
+      cat "$GS_STATE/color-scheme" 2>/dev/null || echo "'default'"
+      ;;
+    night-light-temperature)
+      echo "uint32 2350"
+      ;;
+    *)
+      :
+      ;;
+  esac
+elif [[ $1 == "set" ]]; then
+  echo "SET $2 $3 $4" >> "$GS_LOG"
+  case $3 in
+    color-scheme)
+      echo "$4" > "$GS_STATE/color-scheme"
+      ;;
+    night-light-temperature)
+      echo "$4" > "$GS_STATE/temperature"
+      ;;
+  esac
+fi

@@ -1,0 +1,4 @@
+{"properties":{"timeseries":[
+  {"time":"2026-11-04T08:00:00Z","data":{"instant":{"details":{"cloud_area_fraction":100.0,"ultraviolet_index_clear_sky":1.0}}}},
+  {"time":"2026-11-04T14:00:00Z","data":{"instant":{"details":{"cloud_area_fraction":50.0,"ultraviolet_index_clear_sky":0.0}}}}
+]}}

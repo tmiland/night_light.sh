@@ -1,0 +1,13 @@
+#!/bin/bash
+args=("$@")
+for arg in "${args[@]}"; do
+  case $arg in
+    -d|-r|--reference)
+      exec /bin/date "${args[@]}"
+      ;;
+  esac
+done
+if [[ " ${args[*]} " == *" -u "* && " ${args[*]} " == *"%Y-%m-%dT%H:00:00Z"* ]]; then
+  exec /bin/date -u -d "@$FAKE_NOW" +%Y-%m-%dT%H:00:00Z
+fi
+exec /bin/date -d "@$FAKE_NOW" "${args[@]}"
