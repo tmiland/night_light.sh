@@ -188,6 +188,69 @@ test_coordinates_truncated() {
   assert_contains "$CASE_HOME/curl.log" "lon=8.5943" || return 1
 }
 
+test_cloud_uv_brightness() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5555" || return 1
+}
+
+test_missing_weather_fields() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" missing
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
+  assert_not_contains "$CASE_HOME/err.log" "syntax error" || return 1
+  if [[ $LAST_RC -ne 124 ]]; then
+    echo "  expected the script to stay alive, rc=$LAST_RC" >&2
+    return 1
+  fi
+}
+
+test_forecast_failure_fallback() {
+  local fake
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  touch -d "@$((fake - 3600))" "$CASE_HOME/.night_light/met_forecast.json"
+  : > "$CASE_HOME/gsettings.log"
+  : > "$CASE_HOME/curl.log"
+  local CURL_FAIL_MATCH=complete
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5555" || return 1
+  assert_not_contains "$CASE_HOME/err.log" "syntax error" || return 1
+}
+
+test_corrupt_forecast_cache() {
+  local fake
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  echo '{bad' > "$CASE_HOME/.night_light/met_forecast.json"
+  touch -d "@$((fake - 3600))" "$CASE_HOME/.night_light/met_forecast.json"
+  : > "$CASE_HOME/gsettings.log"
+  : > "$CASE_HOME/curl.log"
+  local CURL_FAIL_MATCH=complete
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
+  assert_not_contains "$CASE_HOME/err.log" "syntax error" || return 1
+}
+
+test_cloud_only() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" "" "$fixtures/config_cloud_only"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5650" || return 1
+}
+
+test_cloud_off_uv_on() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" "" "$fixtures/config_cloud_off_uv_on"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
+}
+
+test_cc_off_uv_off() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" "" "$fixtures/config_cc_off_uv_off"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
+  assert_not_contains "$CASE_HOME/curl.log" "locationforecast/2.0/complete" || return 1
+}
+
+test_uv_extreme() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" alt
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -199,6 +262,14 @@ all_tests=(
   test_corrupt_sun_cache
   test_sun_cache_date_rollover
   test_coordinates_truncated
+  test_cloud_uv_brightness
+  test_missing_weather_fields
+  test_forecast_failure_fallback
+  test_corrupt_forecast_cache
+  test_cloud_only
+  test_cloud_off_uv_on
+  test_cc_off_uv_off
+  test_uv_extreme
 )
 
 for name in "${all_tests[@]}"; do

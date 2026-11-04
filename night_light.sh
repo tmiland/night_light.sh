@@ -281,6 +281,134 @@ load_sun_times() {
   return 0
 }
 
+load_weather() {
+  if [[ ${yr:-0} != 1 ]] || { [[ ${cc:-0} != 1 ]] && [[ ${uv:-0} != 1 ]]; }; then
+    cloud_cover=0
+    uv_rad=0
+    uv_scale=0
+    uv_radiation=""
+    return 0
+  fi
+
+  if [[ -z ${yr_location_position_lat:-} || -z ${yr_location_position_lon:-} ]]; then
+    cloud_cover=0
+    uv_rad=0
+    uv_scale=0
+    uv_radiation=""
+    if [[ ${weather_warned:-0} != 1 ]]; then
+      log "forecast unavailable"
+      weather_warned=1
+    fi
+    return 1
+  fi
+
+  local url="https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${yr_location_position_lat}&lon=${yr_location_position_lon}"
+  fetch_json "$url" "$met_forecast_cache" 1800 || true
+
+  if [[ ! -f $met_forecast_cache ]] || ! jq -e . "$met_forecast_cache" >/dev/null 2>&1; then
+    cloud_cover=0
+    uv_rad=0
+    uv_scale=0
+    uv_radiation=""
+    if [[ ${weather_warned:-0} != 1 ]]; then
+      log "forecast unavailable"
+      weather_warned=1
+    fi
+    return 1
+  fi
+
+  local now_utc entry cloud uv
+  now_utc=$(date -u +%Y-%m-%dT%H:00:00Z)
+  entry=$(jq -c --arg now "$now_utc" \
+    '[.properties.timeseries[] | select(.time <= $now)] | last // .properties.timeseries[0]' \
+    "$met_forecast_cache" 2>/dev/null)
+  cloud=$(jq -r '.data.instant.details.cloud_area_fraction // 0' <<<"$entry" 2>/dev/null)
+  uv=$(jq -r '.data.instant.details.ultraviolet_index_clear_sky // empty' <<<"$entry" 2>/dev/null)
+
+  cloud_cover=$(printf '%.0f' "${cloud:-0}")
+
+  if [[ -z $uv ]]; then
+    uv_rad=0
+    uv_scale=0
+    uv_radiation=""
+  else
+    uv_rad=$(printf '%.0f' "$uv")
+
+    case $uv_rad in
+    0)
+      uv_radiation="($uv_rad) No UV radiation"
+      uv_scale=100
+      ;;
+    1)
+      uv_radiation="($uv_rad) Low"
+      uv_scale=95
+      ;;
+    2)
+      uv_radiation="($uv_rad) Low"
+      uv_scale=85
+      ;;
+    3)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=75
+      ;;
+    4)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=65
+      ;;
+    5)
+      uv_radiation="($uv_rad) Moderate"
+      uv_scale=55
+      ;;
+    6)
+      uv_radiation="($uv_rad) High"
+      uv_scale=45
+      ;;
+    7)
+      uv_radiation="($uv_rad) High"
+      uv_scale=35
+      ;;
+    8)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=25
+      ;;
+    9)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=15
+      ;;
+    10)
+      uv_radiation="($uv_rad) Very high"
+      uv_scale=5
+      ;;
+    11)
+      uv_radiation="($uv_rad) Extreme"
+      uv_scale=0
+      ;;
+    *)
+      uv_radiation="($uv_rad) Extreme"
+      uv_scale=0
+      ;;
+  esac
+  fi
+
+  weather_warned=0
+  return 0
+}
+
+print_weather() {
+  echo "Sunrise: $sunrise Sunset: $sunset"
+  if [[ ${cc:-0} == "1" ]]; then
+    echo "Cloud cover past 5 minutes: ${cloud_cover:-0}%"
+  fi
+  if [[ ${uv:-0} == "1" ]]; then
+    echo "UV Index past 5 minutes: ${uv_radiation:-}"
+  fi
+  if [[ ${cc:-0} == "1" ]] && [[ ${uv:-0} == "1" ]]; then
+    echo "UV Index is added to Cloud cover"
+    echo "On a inverted scale from 100-0"
+    echo "Calculation: ${max_bright}-(${cloud_cover:-0}+${uv_scale:-0})="$(( max_bright - (cloud_cover + uv_scale) ))""
+  fi
+}
+
 case $time_format in
   12)
   time_format="%l"
@@ -434,6 +562,7 @@ yr() {
 fi
 
 load_sun_times || true
+load_weather || true
 
 send_notification() {
   notification="$1"
@@ -550,6 +679,7 @@ auto-run() {
         sed "s/% cloud cover//g")
       fi
     fi
+    load_weather || true
 
     set-and-sleep() {
       if [[ $1 != $LastSetting ]]
@@ -776,8 +906,9 @@ do
       shift
       ;;
     --yr | -y)
-      yr_arg=1
-      yr
+      load_sun_times || true
+      load_weather || true
+      print_weather
       shift
       ;;
     --config | -c)
