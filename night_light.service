@@ -6,7 +6,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 Environment="DISPLAY=:0"
-ExecStart=screen -DmS night_light /bin/bash -c '/usr/local/bin/night_light -ar; exec bash'
+ExecStart=screen -DmS night_light /bin/bash -c 'while true; do /usr/local/bin/night_light -ar; echo night_light exited; sleep 5; done'
 Restart=on-failure
 
 [Install]

@@ -258,6 +258,10 @@ test_yr_off() {
   assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-light" || return 1
 }
 
+test_unit_self_heal() {
+  grep -q 'while true; do' "$repo/night_light.service"
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -278,6 +282,7 @@ all_tests=(
   test_cc_off_uv_off
   test_uv_extreme
   test_yr_off
+  test_unit_self_heal
 )
 
 for name in "${all_tests[@]}"; do
