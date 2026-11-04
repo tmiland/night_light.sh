@@ -6,10 +6,16 @@ url=""
 out=""
 expect_out=0
 zset=0
+want_status=0
+expect_w=0
 for arg in "$@"; do
   if [[ $expect_out == 1 ]]; then
     out=$arg
     expect_out=0
+    continue
+  fi
+  if [[ $expect_w == 1 ]]; then
+    expect_w=0
     continue
   fi
   case $arg in
@@ -18,6 +24,10 @@ for arg in "$@"; do
       ;;
     -z)
       zset=1
+      ;;
+    -w)
+      want_status=1
+      expect_w=1
       ;;
     --*)
       :
@@ -31,25 +41,55 @@ for arg in "$@"; do
   esac
 done
 
-if [[ -n ${CURL_FAIL_MATCH:-} && $url == *"$CURL_FAIL_MATCH"* ]]; then
+emit_status() {
+  if [[ $want_status == 1 ]]; then
+    printf '%s' "$1"
+  fi
+}
+
+once_marker="$HOME/.curl_once_$(printf '%s' "${CURL_FAIL_ONCE:-none}" | tr -c 'A-Za-z0-9' '_')"
+if [[ -n ${CURL_FAIL_ONCE:-} && $url == *"$CURL_FAIL_ONCE"* && ! -f $once_marker ]]; then
+  : > "$once_marker"
+  emit_status 503
   exit 22
 fi
 
+if [[ -n ${CURL_FAIL_MATCH:-} && $url == *"$CURL_FAIL_MATCH"* ]]; then
+  emit_status 503
+  exit 22
+fi
+
+if [[ -n ${CURL_EMPTY_MATCH:-} && $url == *"$CURL_EMPTY_MATCH"* ]]; then
+  emit_status 200
+  exit 0
+fi
+
 if [[ $zset == 1 && ${CURL_304:-0} == 1 ]]; then
+  emit_status 304
   exit 0
 fi
 
 fixture=""
 case $url in
   *"/locations/"*)
-    fixture="$FIXTURES/location.json"
+    if [[ ${FIXTURE_MODE:-} == "location2" ]]; then
+      fixture="$FIXTURES/location2.json"
+    else
+      fixture="$FIXTURES/location.json"
+    fi
     ;;
   *"/sunrise/3.0/sun"*)
-    if [[ ${FIXTURE_MODE:-} == "polar" ]]; then
-      fixture="$FIXTURES/sun_null.json"
-    else
-      fixture="$FIXTURES/sun.json"
-    fi
+    case ${FIXTURE_MODE:-} in
+      polar)
+        fixture="$FIXTURES/sun_null.json"
+        ;;
+      dst)
+        fixture="$FIXTURES/sun_dst.json"
+        ;;
+      *)
+        fixture="$FIXTURES/sun.json"
+        ;;
+    esac
     ;;
   *"/locationforecast/2.0/complete"*)
     case ${FIXTURE_MODE:-} in
@@ -58,6 +98,9 @@ case $url in
         ;;
       alt)
         fixture="$FIXTURES/forecast_alt.json"
+        ;;
+      uv0)
+        fixture="$FIXTURES/forecast_uv0.json"
         ;;
       *)
         fixture="$FIXTURES/forecast.json"
@@ -74,3 +117,4 @@ if [[ -n $out ]]; then
 else
   cat "$fixture"
 fi
+emit_status 200

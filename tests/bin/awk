@@ -1,0 +1,5 @@
+#!/bin/bash
+if [[ -x /usr/bin/mawk ]]; then
+  exec /usr/bin/mawk "$@"
+fi
+exec /usr/bin/gawk "$@"

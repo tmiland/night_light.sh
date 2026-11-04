@@ -124,7 +124,8 @@ log() {
 
 fetch_json() {
   local url=$1 cache=$2 max_age=$3
-  local tmp="${cache}.tmp.$$"
+  local tmp="${cache}.tmp.$$" attempt="${cache}.attempt"
+  local http_code=""
 
   if [[ -f $cache ]]; then
     local age=$(( $(date +%s) - $(stat -c %Y "$cache") ))
@@ -133,23 +134,46 @@ fetch_json() {
     fi
   fi
 
-  if curl --silent --show-error --fail --compressed --max-time 20 \
-      --retry 2 --retry-delay 2 -H "User-Agent: $MET_UA" \
-      -z "$cache" -o "$tmp" "$url"; then
-    if [[ -s $tmp ]]; then
-      mv "$tmp" "$cache"
-      return 0
-    fi
-    rm -f "$tmp"
-    if [[ -f $cache ]]; then
-      touch "$cache"
-      return 0
+  if [[ -f $attempt ]]; then
+    local retry_age=$(( $(date +%s) - $(stat -c %Y "$attempt") ))
+    if (( retry_age < 900 )); then
+      return 1
     fi
   fi
 
-  rm -f "$tmp"
-  log "fetch failed: $url"
-  return 1
+  http_code=$(curl --silent --show-error --fail --compressed --max-time 20 \
+      --retry 2 --retry-delay 2 -H "User-Agent: $MET_UA" \
+      -z "$cache" -o "$tmp" -w '%{http_code}' "$url") || true
+
+  case $http_code in
+    200)
+      if [[ -s $tmp ]] && jq -e . "$tmp" >/dev/null 2>&1; then
+        mv "$tmp" "$cache"
+        rm -f "$attempt"
+        return 0
+      fi
+      rm -f "$tmp"
+      log "invalid response: $url"
+      date +%s > "$attempt"
+      return 1
+      ;;
+    304)
+      rm -f "$tmp"
+      if [[ -f $cache ]]; then
+        touch "$cache"
+        rm -f "$attempt"
+        return 0
+      fi
+      date +%s > "$attempt"
+      return 1
+      ;;
+    *)
+      rm -f "$tmp"
+      log "fetch failed: $url (${http_code:-no status})"
+      date +%s > "$attempt"
+      return 1
+      ;;
+  esac
 }
 
 load_location() {
@@ -182,16 +206,17 @@ load_location() {
     lat=$(jq -r '.position.lat // empty' "$raw" 2>/dev/null)
     lon=$(jq -r '.position.lon // empty' "$raw" 2>/dev/null)
     if [[ -n $lat && -n $lon ]]; then
-      lat=$(awk -v v="$lat" 'BEGIN{printf "%.4f", v}')
-      lon=$(awk -v v="$lon" 'BEGIN{printf "%.4f", v}')
-      jq -n --arg loc "$yr_location" --argjson lat "$lat" --argjson lon "$lon" \
-        '{location:$loc,lat:$lat,lon:$lon}' > "$tmp"
-      mv "$tmp" "$cache"
-      yr_location_position_lat=$lat
-      yr_location_position_lon=$lon
-      gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "($lat,$lon)"
-      rm -f "$raw"
-      return 0
+      lat=$(LC_ALL=C awk -v v="$lat" 'BEGIN{printf "%.4f", v}')
+      lon=$(LC_ALL=C awk -v v="$lon" 'BEGIN{printf "%.4f", v}')
+      if jq -n --arg loc "$yr_location" --argjson lat "$lat" --argjson lon "$lon" \
+          '{location:$loc,lat:$lat,lon:$lon}' > "$tmp" && [[ -s $tmp ]]; then
+        mv "$tmp" "$cache"
+        yr_location_position_lat=$lat
+        yr_location_position_lon=$lon
+        gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "($lat,$lon)"
+        rm -f "$raw"
+        return 0
+      fi
     fi
   fi
 
@@ -211,7 +236,9 @@ load_location() {
 }
 
 load_sun_times() {
-  local today offset cache="$met_sun_cache" cache_date="" url=""
+  local today offset cache="$met_sun_cache" raw url=""
+  local wrapper_date="" wrapper_lat="" wrapper_lon=""
+  local sunrise_iso="" sunset_iso=""
 
   today=$(date +%F)
   if [[ -z ${yr_location_position_lat:-} || -z ${yr_location_position_lon:-} ]]; then
@@ -223,29 +250,43 @@ load_sun_times() {
     return 1
   fi
 
+  raw="$config_folder/met_sun.raw.${yr_location_position_lat}_${yr_location_position_lon}.json"
   offset=$(date +%:z | sed 's/+/%2B/')
   url="https://api.met.no/weatherapi/sunrise/3.0/sun?lat=${yr_location_position_lat}&lon=${yr_location_position_lon}&date=${today}&offset=${offset}"
 
-  [[ -f $cache ]] && cache_date=$(date -r "$cache" +%F 2>/dev/null)
-  if [[ $cache_date != "$today" ]]; then
-    fetch_json "$url" "$cache" 0 || true
-  elif ! jq -e . "$cache" >/dev/null 2>&1; then
-    fetch_json "$url" "$cache" 0 || true
+  if [[ -f $cache ]]; then
+    wrapper_date=$(jq -r '.date // empty' "$cache" 2>/dev/null)
+    wrapper_lat=$(jq -r '.lat // empty' "$cache" 2>/dev/null)
+    wrapper_lon=$(jq -r '.lon // empty' "$cache" 2>/dev/null)
   fi
 
-  cache_date=""
-  [[ -f $cache ]] && cache_date=$(date -r "$cache" +%F 2>/dev/null)
-  if [[ $cache_date != "$today" ]]; then
-    sun_times_valid=0
-    if [[ ${sun_warned:-0} != 1 ]]; then
-      log "sun times unavailable"
-      sun_warned=1
+  if [[ $wrapper_date == "$today" && $wrapper_lat == "$yr_location_position_lat" && $wrapper_lon == "$yr_location_position_lon" ]]; then
+    sunrise_iso=$(jq -r '.sunrise // empty' "$cache" 2>/dev/null)
+    sunset_iso=$(jq -r '.sunset // empty' "$cache" 2>/dev/null)
+  else
+    fetch_json "$url" "$raw" 0 || true
+    sunrise_iso=$(jq -r '.properties.sunrise.time // empty' "$raw" 2>/dev/null)
+    sunset_iso=$(jq -r '.properties.sunset.time // empty' "$raw" 2>/dev/null)
+
+    if [[ -n $sunrise_iso && -n $sunset_iso ]]; then
+      local sunrise_date sunset_date
+      sunrise_date=$(date -d "$sunrise_iso" +%F 2>/dev/null)
+      sunset_date=$(date -d "$sunset_iso" +%F 2>/dev/null)
+      if [[ $sunrise_date != "$today" || $sunset_date != "$today" ]]; then
+        sunrise_iso=""
+        sunset_iso=""
+      elif jq -n --arg date "$today" --arg lat "$yr_location_position_lat" \
+          --arg lon "$yr_location_position_lon" --arg sunrise "$sunrise_iso" \
+          --arg sunset "$sunset_iso" \
+          '{date:$date,lat:$lat,lon:$lon,sunrise:$sunrise,sunset:$sunset}' > "${cache}.tmp.$$" \
+          && [[ -s "${cache}.tmp.$$" ]]; then
+        mv "${cache}.tmp.$$" "$cache"
+      else
+        rm -f "${cache}.tmp.$$"
+      fi
     fi
-    return 1
   fi
 
-  sunrise_iso=$(jq -r '.properties.sunrise.time // empty' "$cache" 2>/dev/null)
-  sunset_iso=$(jq -r '.properties.sunset.time // empty' "$cache" 2>/dev/null)
   if [[ -z $sunrise_iso || -z $sunset_iso ]]; then
     sun_times_valid=0
     if [[ ${sun_warned:-0} != 1 ]]; then
@@ -265,18 +306,18 @@ load_sun_times() {
     return 1
   fi
 
-  sunrise=$(date -d "$sunrise_iso" +%H:%M)
-  sunset=$(date -d "$sunset_iso" +%H:%M)
+  sunrise=$(date -d "@$sunrise_epoch" +%H:%M)
+  sunset=$(date -d "@$sunset_epoch" +%H:%M)
   sun_date=$today
   sun_times_valid=1
   sun_warned=0
 
-  night_light_schedule_from_hour=$(date -d "$sunset_iso" +%-H)
-  night_light_schedule_from_min=$(date -d "$sunset_iso" +%-M)
-  night_light_schedule_to_hour=$(date -d "$sunrise_iso" +%-H)
-  night_light_schedule_to_min=$(date -d "$sunrise_iso" +%-M)
-  night_light_schedule_from_min=$(bc <<< "scale=9; $night_light_schedule_from_min / 60")
-  night_light_schedule_to_min=$(bc <<< "scale=9; $night_light_schedule_to_min / 60")
+  night_light_schedule_from_hour=$(date -d "@$sunset_epoch" +%-H)
+  night_light_schedule_from_min=$(date -d "@$sunset_epoch" +%-M)
+  night_light_schedule_to_hour=$(date -d "@$sunrise_epoch" +%-H)
+  night_light_schedule_to_min=$(date -d "@$sunrise_epoch" +%-M)
+  night_light_schedule_from_min=$(LC_ALL=C bc <<< "scale=9; $night_light_schedule_from_min / 60")
+  night_light_schedule_to_min=$(LC_ALL=C bc <<< "scale=9; $night_light_schedule_to_min / 60")
 
   return 0
 }
@@ -325,14 +366,14 @@ load_weather() {
   cloud=$(jq -r '.data.instant.details.cloud_area_fraction // 0' <<<"$entry" 2>/dev/null)
   uv=$(jq -r '.data.instant.details.ultraviolet_index_clear_sky // empty' <<<"$entry" 2>/dev/null)
 
-  cloud_cover=$(printf '%.0f' "${cloud:-0}")
+  cloud_cover=$(LC_ALL=C printf '%.0f' "${cloud:-0}")
 
   if [[ -z $uv ]]; then
     uv_rad=0
     uv_scale=0
     uv_radiation=""
   else
-    uv_rad=$(printf '%.0f' "$uv")
+    uv_rad=$(LC_ALL=C printf '%.0f' "$uv")
 
     case $uv_rad in
     0)
@@ -397,10 +438,10 @@ load_weather() {
 print_weather() {
   echo "Sunrise: $sunrise Sunset: $sunset"
   if [[ ${cc:-0} == "1" ]]; then
-    echo "Cloud cover past 5 minutes: ${cloud_cover:-0}%"
+    echo "Cloud cover (current hour): ${cloud_cover:-0}%"
   fi
   if [[ ${uv:-0} == "1" ]]; then
-    echo "UV Index past 5 minutes: ${uv_radiation:-}"
+    echo "UV index (current hour): ${uv_radiation:-}"
   fi
   if [[ ${cc:-0} == "1" ]] && [[ ${uv:-0} == "1" ]]; then
     echo "UV Index is added to Cloud cover"
@@ -465,8 +506,15 @@ set_night_light_schedule_to () {
 }
 
 auto-run() {
+  local loop_count=0
   while true
   do
+    loop_count=$((loop_count + 1))
+    if [[ -z ${yr_location_position_lat:-} || -z ${yr_location_position_lon:-} ]]; then
+      if (( loop_count % 5 == 1 )); then
+        load_location || true
+      fi
+    fi
     if [[ $(date +%F) != "${sun_date:-}" ]]; then
       load_sun_times || true
     fi

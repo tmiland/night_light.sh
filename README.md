@@ -10,10 +10,9 @@
 
 Output looks like this
 ```bash
-yr.no is Online.
-Sunrise: 06:26 Sunset: 20:21
-Cloud cover past 5 minutes: 100%
-UV Index past 5 minutes: (1) Low
+Sunrise: 07:54 Sunset: 16:22
+Cloud cover (current hour): 100%
+UV index (current hour): (1) Low
 UV Index is added to Cloud cover
 On a inverted scale from 100-0
 Calculation: 5750-(100+95)=5555
@@ -24,7 +23,7 @@ Current temperature: 5555
 Download and install
 
 ```bash
-wget -qO- https://github.com/tmiland/night_light.sh/raw/main/night_light.sh | bash -s -- -i
+curl -fsSL https://github.com/tmiland/night_light.sh/raw/main/night_light.sh | bash -s -- -i
 ```
 
 ### Config options
@@ -54,6 +53,9 @@ Usage: [options]
  - screen
  - curl
  - jq
+ - bc
+ - zenity
+ - git (installer)
  - notify-send (libnotify-bin)
 
 Weather data: MET Norway (`api.met.no`), CC BY 4.0.
@@ -66,7 +68,8 @@ Weather data: MET Norway (`api.met.no`), CC BY 4.0.
 
 - [Based on source](https://discussion.fedoraproject.org/t/can-i-manipulate-night-mode-from-command-line/72853/2)
 - [dark-toggle](https://github.com/rifazn/dark-toggle)
-- [yr.no](https://yr.no) for sunrise/sunset times.
+- [MET Norway](https://api.met.no) for sunrise/sunset and weather data.
+- [yr.no](https://yr.no) for location lookup.
 - Dark/light icons: <a href="https://www.flaticon.com/free-icons/innovation" title="innovation icons">Innovation icons created by iconmas - Flaticon</a>
 
 ### Disclaimer 

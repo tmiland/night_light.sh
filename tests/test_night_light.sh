@@ -1,6 +1,8 @@
 #!/bin/bash
 # Shell test harness for night_light.sh. No framework; fixture-backed stubs.
 set -u
+export TZ=Europe/Oslo
+export LC_ALL=C
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 tests="$repo/tests"
@@ -64,11 +66,21 @@ run_case() {
   CASE_HOME=$home
 
   timeout 1 env HOME="$home" PATH="$tests/bin:$PATH" FIXTURES="$fixtures" \
+    TZ="$TZ" LC_ALL="${CASE_LC_ALL:-C}" \
     FAKE_NOW="$fake" FIXTURE_MODE="$mode" CURL_FAIL_MATCH="${CURL_FAIL_MATCH:-}" \
+    CURL_FAIL_ONCE="${CURL_FAIL_ONCE:-}" CURL_EMPTY_MATCH="${CURL_EMPTY_MATCH:-}" \
+    CURL_304="${CURL_304:-}" \
     CURL_LOG="$home/curl.log" LYNX_LOG="$home/lynx.log" \
     GS_STATE="$home/state" GS_LOG="$home/gsettings.log" \
     bash "$repo/night_light.sh" -ar > "$home/out.log" 2> "$home/err.log"
   LAST_RC=$?
+}
+
+assert_alive() {
+  if [[ $LAST_RC -ne 124 ]]; then
+    echo "  expected the script to stay alive, rc=$LAST_RC" >&2
+    return 1
+  fi
 }
 
 assert_contains() {
@@ -159,6 +171,7 @@ test_corrupt_sun_cache() {
   fake=$(date -d '2026-11-04 09:00' +%s)
   run_case "$FUNCNAME" "$fake" "'prefer-dark'"
   echo '{bad' > "$CASE_HOME/.night_light/met_sun.json"
+  rm -f "$CASE_HOME/.night_light/"met_sun.raw.*
   : > "$CASE_HOME/gsettings.log"
   : > "$CASE_HOME/curl.log"
   local CURL_FAIL_MATCH=sunrise
@@ -175,11 +188,13 @@ test_sun_cache_date_rollover() {
   local fake
   fake=$(date -d '2026-11-04 09:00' +%s)
   make_home "$FUNCNAME" "'prefer-dark'"
-  cp "$fixtures/sun.json" "$CASE_HOME/.night_light/met_sun.json"
-  touch -d "@$((fake - 86400))" "$CASE_HOME/.night_light/met_sun.json"
+  cat > "$CASE_HOME/.night_light/met_sun.json" <<'EOF'
+{"date":"2026-11-03","lat":"59.8765","lon":"8.5943","sunrise":"2026-11-03T07:55+01:00","sunset":"2026-11-03T16:21+01:00"}
+EOF
   run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
   assert_contains "$CASE_HOME/curl.log" "sunrise/3.0/sun" || return 1
   assert_contains "$CASE_HOME/curl.log" "date=2026-11-04" || return 1
+  assert_alive || return 1
 }
 
 test_coordinates_truncated() {
@@ -259,7 +274,8 @@ test_yr_off() {
 }
 
 test_unit_self_heal() {
-  grep -q 'while true; do' "$repo/night_light.service"
+  grep -Fq 'while true; do' "$repo/night_light.service" &&
+    grep -Fq -- '-ar; echo night_light exited; sleep 5; done' "$repo/night_light.service"
 }
 
 test_branch_matrix() {
@@ -301,6 +317,101 @@ test_branch_matrix() {
   [[ $actual == "$expected" ]] || { echo "  00:30 expected $expected, got $actual" >&2; return 1; }
 }
 
+test_coordinates_locale() {
+  local CASE_LC_ALL=nb_NO.utf8
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
+  assert_contains "$CASE_HOME/curl.log" "lat=59.8765" || return 1
+  assert_not_contains "$CASE_HOME/curl.log" "lat=59,8765" || return 1
+  if ! jq -e . "$CASE_HOME/.night_light/location.json" >/dev/null 2>&1; then
+    echo "  location.json is not valid JSON" >&2
+    return 1
+  fi
+  assert_alive || return 1
+}
+
+test_sun_location_change() {
+  local fake
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  : > "$CASE_HOME/curl.log"
+  cp "$fixtures/config_location2" "$CASE_HOME/.night_light/.night_light_config"
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" location2 "" keep
+  assert_contains "$CASE_HOME/curl.log" "locations/1-12345" || return 1
+  assert_contains "$CASE_HOME/curl.log" "lat=60.0000" || return 1
+  assert_contains "$CASE_HOME/curl.log" "lon=9.0000" || return 1
+  assert_alive || return 1
+}
+
+test_location_retry() {
+  local CURL_FAIL_ONCE=locations count
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
+  assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-light" || return 1
+  count=$(grep -c '/locations/' "$CASE_HOME/curl.log" || true)
+  if [[ $count -lt 2 ]]; then
+    echo "  expected a location retry, got $count request(s)" >&2
+    return 1
+  fi
+  assert_alive || return 1
+}
+
+test_failure_backoff() {
+  local fake count
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  touch -d "@$((fake - 3600))" "$CASE_HOME/.night_light/met_forecast.json"
+  : > "$CASE_HOME/gsettings.log"
+  : > "$CASE_HOME/curl.log"
+  local CURL_FAIL_MATCH=complete
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
+  count=$(grep -c 'locationforecast/2.0/complete' "$CASE_HOME/curl.log" || true)
+  if [[ $count -ne 1 ]]; then
+    echo "  expected 1 forecast request during backoff, got $count" >&2
+    return 1
+  fi
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5555" || return 1
+  assert_alive || return 1
+}
+
+test_empty_200_keeps_cache() {
+  local fake
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  touch -d "@$((fake - 3600))" "$CASE_HOME/.night_light/met_forecast.json"
+  : > "$CASE_HOME/gsettings.log"
+  : > "$CASE_HOME/curl.log"
+  local CURL_EMPTY_MATCH=complete
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5555" || return 1
+  assert_alive || return 1
+}
+
+test_304_keeps_cache() {
+  local fake
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'"
+  touch -d "@$((fake - 3600))" "$CASE_HOME/.night_light/met_forecast.json"
+  : > "$CASE_HOME/gsettings.log"
+  : > "$CASE_HOME/curl.log"
+  local CURL_304=1
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" "" "" keep
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5555" || return 1
+  assert_alive || return 1
+}
+
+test_dst_schedule() {
+  local fake
+  fake=$(TZ=Europe/Oslo date -d '2026-03-29 09:00' +%s)
+  run_case "$FUNCNAME" "$fake" "'prefer-dark'" dst
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 7.083333333" || return 1
+  assert_alive || return 1
+}
+
+test_uv_zero() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" uv0
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5650" || return 1
+  assert_alive || return 1
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -323,13 +434,27 @@ all_tests=(
   test_yr_off
   test_unit_self_heal
   test_branch_matrix
+  test_coordinates_locale
+  test_sun_location_change
+  test_location_retry
+  test_failure_backoff
+  test_empty_200_keeps_cache
+  test_304_keeps_cache
+  test_dst_schedule
+  test_uv_zero
 )
 
 for name in "${all_tests[@]}"; do
   should_run "$name" || continue
   if "$name"; then
-    echo "PASS $name"
-    pass=$((pass + 1))
+    if [[ $name != test_unit_self_heal && $LAST_RC -ne 124 ]]; then
+      echo "FAIL $name (script exited, rc=$LAST_RC)"
+      fail=$((fail + 1))
+      failed+=("$name")
+    else
+      echo "PASS $name"
+      pass=$((pass + 1))
+    fi
   else
     echo "FAIL $name (script rc=$LAST_RC)"
     fail=$((fail + 1))
