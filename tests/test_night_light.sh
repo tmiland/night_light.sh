@@ -251,6 +251,13 @@ test_uv_extreme() {
   assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5750" || return 1
 }
 
+test_yr_off() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" "" "$fixtures/config_yr0"
+  assert_not_contains "$CASE_HOME/curl.log" "locationforecast/2.0/complete" || return 1
+  assert_contains "$CASE_HOME/curl.log" "sunrise/3.0/sun" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-light" || return 1
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -270,6 +277,7 @@ all_tests=(
   test_cloud_off_uv_on
   test_cc_off_uv_off
   test_uv_extreme
+  test_yr_off
 )
 
 for name in "${all_tests[@]}"; do

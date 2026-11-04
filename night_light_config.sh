@@ -13,11 +13,11 @@ output=$(
     --add-entry="Transition minutes after sunrise to maximum : (${CfgArr[1]})" \
     --add-entry="Night time minimum display brightness : (${CfgArr[2]})" \
     --add-entry="Transition minutes before sunset to minimum : (${CfgArr[3]})" \
-    --add-entry="Cloud cover on/off (0/1) : (${CfgArr[4]})" \
-    --add-entry="UV Index on/off (0/1) : (${CfgArr[5]})" \
+    --add-entry="Cloud cover adjustment (0/1) : (${CfgArr[4]})" \
+    --add-entry="UV index adjustment (0/1) : (${CfgArr[5]})" \
     --add-entry="Change color scheme on/off (0/1) : (${CfgArr[6]})" \
-    --add-entry="Turn yr.no on/off (0/1) : (${CfgArr[7]})" \
-    --add-entry="yr.no location : (${CfgArr[8]})" \
+    --add-entry="Weather data (cloud/UV) on/off (0/1) : (${CfgArr[7]})" \
+    --add-entry="Location URL (yr.no) : (${CfgArr[8]})" \
     --add-entry="Time format (12/24) : (${CfgArr[9]})"
 )
 

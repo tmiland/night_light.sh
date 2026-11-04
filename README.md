@@ -52,10 +52,11 @@ Usage: [options]
  - Debian
  - Gnome desktop
  - screen
- - lynx
- - wget
  - curl
+ - jq
  - notify-send (libnotify-bin)
+
+Weather data: MET Norway (`api.met.no`), CC BY 4.0.
 
 ### Extra
 
