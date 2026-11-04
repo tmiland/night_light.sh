@@ -107,6 +107,180 @@ fi
 cloud_cover=0
 uv_scale=0
 
+# MET Norway API settings
+MET_UA="night_light.sh/${VERSION} (https://github.com/tmiland/night_light.sh)"
+met_sun_cache="$config_folder/met_sun.json"
+met_forecast_cache="$config_folder/met_forecast.json"
+location_cache="$config_folder/location.json"
+
+log() {
+  local message=$1
+  local log_file="$config_folder/night_light.log"
+  if [[ -f $log_file ]] && [[ $(stat -c%s "$log_file") -gt 1048576 ]]; then
+    mv "$log_file" "$log_file.1"
+  fi
+  printf '%s %s\n' "$(date '+%F %T')" "$message" >> "$log_file"
+}
+
+fetch_json() {
+  local url=$1 cache=$2 max_age=$3
+  local tmp="${cache}.tmp.$$"
+
+  if [[ -f $cache ]]; then
+    local age=$(( $(date +%s) - $(stat -c %Y "$cache") ))
+    if (( age < max_age )); then
+      return 0
+    fi
+  fi
+
+  if curl --silent --show-error --fail --compressed --max-time 20 \
+      --retry 2 --retry-delay 2 -H "User-Agent: $MET_UA" \
+      -z "$cache" -o "$tmp" "$url"; then
+    if [[ -s $tmp ]]; then
+      mv "$tmp" "$cache"
+      return 0
+    fi
+    rm -f "$tmp"
+    if [[ -f $cache ]]; then
+      touch "$cache"
+      return 0
+    fi
+  fi
+
+  rm -f "$tmp"
+  log "fetch failed: $url"
+  return 1
+}
+
+load_location() {
+  if [[ -z ${yr_location:-} ]]; then
+    log "location not configured"
+    return 1
+  fi
+
+  local location_id cache="$location_cache" raw="${location_cache}.raw.$$" tmp="${location_cache}.tmp.$$"
+  location_id=$(echo "$yr_location" | cut -d '/' -f 1-2 | sed 's|/||g')
+
+  if [[ -f $cache ]]; then
+    local cached_location age
+    cached_location=$(jq -r '.location // empty' "$cache" 2>/dev/null)
+    age=$(( $(date +%s) - $(stat -c %Y "$cache") ))
+    if [[ $cached_location == "$yr_location" ]] && (( age < 2592000 )); then
+      yr_location_position_lat=$(jq -r '.lat // empty' "$cache" 2>/dev/null)
+      yr_location_position_lon=$(jq -r '.lon // empty' "$cache" 2>/dev/null)
+      if [[ -n $yr_location_position_lat && -n $yr_location_position_lon ]]; then
+        gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "(${yr_location_position_lat},${yr_location_position_lon})"
+        return 0
+      fi
+    fi
+  fi
+
+  if curl --silent --show-error --fail --compressed --max-time 20 \
+      --retry 2 --retry-delay 2 -H "User-Agent: $MET_UA" \
+      -o "$raw" "https://www.yr.no/api/v0/locations/${location_id}?language=en"; then
+    local lat lon
+    lat=$(jq -r '.position.lat // empty' "$raw" 2>/dev/null)
+    lon=$(jq -r '.position.lon // empty' "$raw" 2>/dev/null)
+    if [[ -n $lat && -n $lon ]]; then
+      lat=$(awk -v v="$lat" 'BEGIN{printf "%.4f", v}')
+      lon=$(awk -v v="$lon" 'BEGIN{printf "%.4f", v}')
+      jq -n --arg loc "$yr_location" --argjson lat "$lat" --argjson lon "$lon" \
+        '{location:$loc,lat:$lat,lon:$lon}' > "$tmp"
+      mv "$tmp" "$cache"
+      yr_location_position_lat=$lat
+      yr_location_position_lon=$lon
+      gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "($lat,$lon)"
+      rm -f "$raw"
+      return 0
+    fi
+  fi
+
+  rm -f "$tmp" "$raw"
+  if [[ -f $cache ]]; then
+    yr_location_position_lat=$(jq -r '.lat // empty' "$cache" 2>/dev/null)
+    yr_location_position_lon=$(jq -r '.lon // empty' "$cache" 2>/dev/null)
+    if [[ -n $yr_location_position_lat && -n $yr_location_position_lon ]]; then
+      gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "(${yr_location_position_lat},${yr_location_position_lon})"
+      log "using cached location"
+      return 0
+    fi
+  fi
+
+  log "location lookup failed"
+  return 1
+}
+
+load_sun_times() {
+  local today offset cache="$met_sun_cache" cache_date="" url=""
+
+  today=$(date +%F)
+  if [[ -z ${yr_location_position_lat:-} || -z ${yr_location_position_lon:-} ]]; then
+    sun_times_valid=0
+    if [[ ${sun_warned:-0} != 1 ]]; then
+      log "sun times unavailable"
+      sun_warned=1
+    fi
+    return 1
+  fi
+
+  offset=$(date +%:z | sed 's/+/%2B/')
+  url="https://api.met.no/weatherapi/sunrise/3.0/sun?lat=${yr_location_position_lat}&lon=${yr_location_position_lon}&date=${today}&offset=${offset}"
+
+  [[ -f $cache ]] && cache_date=$(date -r "$cache" +%F 2>/dev/null)
+  if [[ $cache_date != "$today" ]]; then
+    fetch_json "$url" "$cache" 0 || true
+  elif ! jq -e . "$cache" >/dev/null 2>&1; then
+    fetch_json "$url" "$cache" 0 || true
+  fi
+
+  cache_date=""
+  [[ -f $cache ]] && cache_date=$(date -r "$cache" +%F 2>/dev/null)
+  if [[ $cache_date != "$today" ]]; then
+    sun_times_valid=0
+    if [[ ${sun_warned:-0} != 1 ]]; then
+      log "sun times unavailable"
+      sun_warned=1
+    fi
+    return 1
+  fi
+
+  sunrise_iso=$(jq -r '.properties.sunrise.time // empty' "$cache" 2>/dev/null)
+  sunset_iso=$(jq -r '.properties.sunset.time // empty' "$cache" 2>/dev/null)
+  if [[ -z $sunrise_iso || -z $sunset_iso ]]; then
+    sun_times_valid=0
+    if [[ ${sun_warned:-0} != 1 ]]; then
+      log "sun times unavailable"
+      sun_warned=1
+    fi
+    return 1
+  fi
+
+  if ! sunrise_epoch=$(date -d "$sunrise_iso" +%s 2>/dev/null) || \
+     ! sunset_epoch=$(date -d "$sunset_iso" +%s 2>/dev/null); then
+    sun_times_valid=0
+    if [[ ${sun_warned:-0} != 1 ]]; then
+      log "sun times unavailable"
+      sun_warned=1
+    fi
+    return 1
+  fi
+
+  sunrise=$(date -d "$sunrise_iso" +%H:%M)
+  sunset=$(date -d "$sunset_iso" +%H:%M)
+  sun_date=$today
+  sun_times_valid=1
+  sun_warned=0
+
+  night_light_schedule_from_hour=$(date -d "$sunset_iso" +%-H)
+  night_light_schedule_from_min=$(date -d "$sunset_iso" +%-M)
+  night_light_schedule_to_hour=$(date -d "$sunrise_iso" +%-H)
+  night_light_schedule_to_min=$(date -d "$sunrise_iso" +%-M)
+  night_light_schedule_from_min=$(bc <<< "scale=9; $night_light_schedule_from_min / 60")
+  night_light_schedule_to_min=$(bc <<< "scale=9; $night_light_schedule_to_min / 60")
+
+  return 0
+}
+
 case $time_format in
   12)
   time_format="%l"
@@ -116,21 +290,7 @@ case $time_format in
     ;;
 esac
 
-if [ -n "$yr_location" ]
-then
-  # Get position from location url
-  yr_location_position=$(echo "$yr_location" | cut -d '/' -f 1-2 | sed "s|/||g")
-  # Set yr location url in a function
-  yr_location_position() {
-    curl -s "https://www.yr.no/api/v0/locations/$yr_location_position?language=en" | jq -r ".position.$1"
-  }
-  # Get lat
-  yr_location_position_lat=$(yr_location_position lat)
-  # Get lon
-  yr_location_position_lon=$(yr_location_position lon)
-  # Set coordinates from yr
-  gsettings set org.gnome.settings-daemon.plugins.color night-light-last-coordinates "(${yr_location_position_lat},${yr_location_position_lon})"
-fi
+load_location || true
 
 # Crawler
 pkg=lynx
@@ -273,6 +433,8 @@ yr() {
   fi
 fi
 
+load_sun_times || true
+
 send_notification() {
   notification="$1"
   notification_title="Night Light"
@@ -303,23 +465,10 @@ dnd_toggle() {
   gsettings set org.gnome.desktop.notifications show-banners "$1"
 }
 
-# Source: https://askubuntu.com/a/1088653
-# get hour from sunset
-night_light_schedule_from_hour=$(echo "$sunset" | grep -oE ".[[:digit:]]:" | sed "s|:||g")
-# get minutes from sunset
-night_light_schedule_from_min=$(echo "$sunset" | grep -oE ":[[:digit:]]." | sed "s|:||g")
-# divide by 60
-night_light_schedule_from_min=$( bc <<< "scale=9; $night_light_schedule_from_min / 60" )
 # Put together in a function E.G: 17:55 turns into 17.916666666
 set_night_light_schedule_from() {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-from "$night_light_schedule_from_hour$night_light_schedule_from_min"
 }
-# get hour from sunset
-night_light_schedule_to_hour=$(echo "$sunrise" | grep -oE "[[:digit:]]:" | sed "s|:||g")
-# get minutes from sunset
-night_light_schedule_to_min=$(echo "$sunrise" | grep -oE ":[[:digit:]]." | sed "s|:||g")
-# divide by 60
-night_light_schedule_to_min=$( bc <<< "scale=9; $night_light_schedule_to_min / 60" )
 # Put together in a function E.G: 07:21 turns into 7.350000000
 set_night_light_schedule_to () {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-to "$night_light_schedule_to_hour$night_light_schedule_to_min"
@@ -328,6 +477,18 @@ set_night_light_schedule_to () {
 auto-run() {
   while true
   do
+    if [[ $(date +%F) != "${sun_date:-}" ]]; then
+      load_sun_times || true
+    fi
+    if [[ ${sun_times_valid:-0} != 1 ]]; then
+      if [[ ${sun_warned:-0} != 1 ]]; then
+        log "sun times unavailable"
+        sun_warned=1
+      fi
+      sleep 60
+      continue
+    fi
+
     get_color_scheme=$(
       [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
       echo dark ||
@@ -368,8 +529,8 @@ auto-run() {
     sed 's|uint32 ||g')
     # Current seconds
     secNow=$(date +"%s")
-    secSunrise=$(date --date="$sunrise today" +%s)
-    secSunset=$(date --date="$sunset today" +%s)
+    secSunrise=$sunrise_epoch
+    secSunset=$sunset_epoch
     # Skip running at night time
     if ! [[ "$secNow" -gt "$secSunset" ]] || ! [[ "$secNow" -lt "$secSunrise" ]]
     then
