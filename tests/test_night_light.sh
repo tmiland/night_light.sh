@@ -123,7 +123,7 @@ test_uses_forecast_api() {
 
 test_schedule_from_api() {
   run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
-  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 7.900000000" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 8.900000000" || return 1
 }
 
 test_no_lynx() {
@@ -287,7 +287,7 @@ test_branch_matrix() {
   [[ $actual == "$expected" ]] || { echo "  08:00 expected $expected, got $actual" >&2; return 1; }
 
   run_case matrix_0825 "$(date -d '2026-11-04 08:25' +%s)" "'prefer-dark'"
-  expected="prefer-light"
+  expected="'prefer-dark'"
   actual=$(cat "$CASE_HOME/state/color-scheme")
   [[ $actual == "$expected" ]] || { echo "  08:25 expected $expected, got $actual" >&2; return 1; }
 
@@ -402,13 +402,70 @@ test_dst_schedule() {
   local fake
   fake=$(TZ=Europe/Oslo date -d '2026-03-29 09:00' +%s)
   run_case "$FUNCNAME" "$fake" "'prefer-dark'" dst
-  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 7.083333333" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 8.083333333" || return 1
   assert_alive || return 1
 }
 
 test_uv_zero() {
   run_case "$FUNCNAME" "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'" uv0
   assert_contains "$CASE_HOME/gsettings.log" "night-light-temperature 5650" || return 1
+  assert_alive || return 1
+}
+
+test_full_ramp_light() {
+  local fake
+  fake=$(date -d '2026-11-04 08:53:59' +%s)
+  run_case full_ramp_light_before "$fake" "'prefer-dark'"
+  if [[ $(cat "$CASE_HOME/state/color-scheme") != "'prefer-dark'" ]]; then
+    echo "  08:53:59 should still be dark" >&2
+    return 1
+  fi
+
+  fake=$(date -d '2026-11-04 08:54:01' +%s)
+  run_case full_ramp_light_after "$fake" "'prefer-dark'"
+  if [[ $(cat "$CASE_HOME/state/color-scheme") != "prefer-light" ]]; then
+    echo "  08:54:01 should be light" >&2
+    return 1
+  fi
+  assert_alive || return 1
+}
+
+test_full_ramp_dark() {
+  local fake
+  fake=$(date -d '2026-11-04 15:21:59' +%s)
+  run_case full_ramp_dark_before "$fake" "'prefer-light'"
+  if [[ $(cat "$CASE_HOME/state/color-scheme") != "'prefer-light'" ]]; then
+    echo "  15:21:59 should still be light" >&2
+    return 1
+  fi
+
+  fake=$(date -d '2026-11-04 15:22:01' +%s)
+  run_case full_ramp_dark_after "$fake" "'prefer-light'"
+  if [[ $(cat "$CASE_HOME/state/color-scheme") != "prefer-dark" ]]; then
+    echo "  15:22:01 should be dark" >&2
+    return 1
+  fi
+  assert_alive || return 1
+}
+
+test_full_ramp_schedule() {
+  local fake
+  fake=$(date -d '2026-11-04 15:22:01' +%s)
+  run_case full_ramp_schedule_dark "$fake" "'prefer-light'"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-from 15.366666666" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 8.900000000" || return 1
+
+  fake=$(date -d '2026-11-04 09:00' +%s)
+  run_case full_ramp_schedule_light "$fake" "'prefer-dark'"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 8.900000000" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-from 15.366666666" || return 1
+  assert_alive || return 1
+}
+
+test_full_ramp_startup_sync() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 16:30' +%s)" "'prefer-dark'"
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-from 15.366666666" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "night-light-schedule-to 8.900000000" || return 1
   assert_alive || return 1
 }
 
@@ -442,6 +499,10 @@ all_tests=(
   test_304_keeps_cache
   test_dst_schedule
   test_uv_zero
+  test_full_ramp_light
+  test_full_ramp_dark
+  test_full_ramp_schedule
+  test_full_ramp_startup_sync
 )
 
 for name in "${all_tests[@]}"; do

@@ -11,7 +11,7 @@
 ####                   Maintained by @tmiland                     ####
 ######################################################################
 
-VERSION='1.0.5'
+VERSION='1.0.6'
 
 #------------------------------------------------------------------------------#
 #
@@ -312,10 +312,12 @@ load_sun_times() {
   sun_times_valid=1
   sun_warned=0
 
-  night_light_schedule_from_hour=$(date -d "@$sunset_epoch" +%-H)
-  night_light_schedule_from_min=$(date -d "@$sunset_epoch" +%-M)
-  night_light_schedule_to_hour=$(date -d "@$sunrise_epoch" +%-H)
-  night_light_schedule_to_min=$(date -d "@$sunrise_epoch" +%-M)
+  local dark_start=$(( sunset_epoch - ${before_sunset:-0} * 60 ))
+  local light_start=$(( sunrise_epoch + ${after_sunrise:-0} * 60 ))
+  night_light_schedule_from_hour=$(date -d "@$dark_start" +%-H)
+  night_light_schedule_from_min=$(date -d "@$dark_start" +%-M)
+  night_light_schedule_to_hour=$(date -d "@$light_start" +%-H)
+  night_light_schedule_to_min=$(date -d "@$light_start" +%-M)
   night_light_schedule_from_min=$(LC_ALL=C bc <<< "scale=9; $night_light_schedule_from_min / 60")
   night_light_schedule_to_min=$(LC_ALL=C bc <<< "scale=9; $night_light_schedule_to_min / 60")
 
@@ -505,8 +507,14 @@ set_night_light_schedule_to () {
   gsettings set org.gnome.settings-daemon.plugins.color night-light-schedule-to "$night_light_schedule_to_hour$night_light_schedule_to_min"
 }
 
+sync_night_light_schedule() {
+  set_night_light_schedule_from
+  set_night_light_schedule_to
+}
+
 auto-run() {
   local loop_count=0
+  local schedule_synced=0
   while true
   do
     loop_count=$((loop_count + 1))
@@ -517,6 +525,7 @@ auto-run() {
     fi
     if [[ $(date +%F) != "${sun_date:-}" ]]; then
       load_sun_times || true
+      schedule_synced=0
     fi
     if [[ ${sun_times_valid:-0} != 1 ]]; then
       if [[ ${sun_warned:-0} != 1 ]]; then
@@ -525,6 +534,10 @@ auto-run() {
       fi
       sleep 60
       continue
+    fi
+    if [[ $schedule_synced != 1 ]]; then
+      sync_night_light_schedule
+      schedule_synced=1
     fi
 
     get_color_scheme=$(
@@ -609,13 +622,7 @@ auto-run() {
     # Are we between sunrise and full brightness?
     if [[ "$secNow" -gt "$secSunrise" ]] && [[ "$secNow" -lt "$secMaxCutoff" ]]
     then
-      # Set global Light Mode when half the time "after sunrise" is reached
-      secBeforeSunriseLightMode=$(( $secSunrise + ( $after_sunrise * 60 / 2 ) ))
-      # Set global Light Mode
-      if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunriseLightMode ]]
-      then
-        toggle_light
-      fi
+      # Light mode is set by the full-day branch once the ramp completes.
       # Current time - Sunrise = progress through transition
       secPast=$(( $secNow - $secSunrise ))
       calc-level-and-sleep "$after_sunrise" $secPast
@@ -648,9 +655,8 @@ auto-run() {
     # Are we between beginning to dim and sunset (full dim)?
     if [[ "$secNow" -gt "$secMinStart" ]] && [[ "$secNow" -lt "$secSunset" ]]
     then
-      secBeforeSunsetDarkMode=$(( $secSunset - ( $before_sunset * 60 / 2 ) ))
-      # Set global Dark Mode when half the time "before sunset" is reached
-      if [[ $cs == "1" ]] && [[ $secNow -gt $secBeforeSunsetDarkMode ]]
+      # Set global Dark Mode at the start of the evening dim
+      if [[ $cs == "1" ]]
       then
         toggle_dark
       fi
