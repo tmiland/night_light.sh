@@ -10,4 +10,4 @@ ExecStart=screen -DmS night_light /bin/bash -c 'while true; do /usr/local/bin/ni
 Restart=on-failure
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

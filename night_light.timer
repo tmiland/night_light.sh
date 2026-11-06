@@ -1,6 +1,8 @@
 [Unit]
 Description=Automatically adjusts night light based on local time.
 Requires=night_light.service
+After=graphical-session.target
+PartOf=graphical-session.target
 
 [Timer]
 Unit=night_light.service

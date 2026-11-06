@@ -278,6 +278,14 @@ test_unit_self_heal() {
     grep -Fq -- '-ar; echo night_light exited; sleep 5; done' "$repo/night_light.service"
 }
 
+test_unit_startup_ordering() {
+  grep -Fq 'WantedBy=graphical-session.target' "$repo/night_light.service" &&
+    grep -Fq 'After=graphical-session.target' "$repo/night_light.service" &&
+    grep -Fq 'PartOf=graphical-session.target' "$repo/night_light.service" &&
+    grep -Fq 'After=graphical-session.target' "$repo/night_light.timer" &&
+    grep -Fq 'PartOf=graphical-session.target' "$repo/night_light.timer"
+}
+
 test_branch_matrix() {
   local expected actual
 
@@ -490,6 +498,7 @@ all_tests=(
   test_uv_extreme
   test_yr_off
   test_unit_self_heal
+  test_unit_startup_ordering
   test_branch_matrix
   test_coordinates_locale
   test_sun_location_change
@@ -508,7 +517,7 @@ all_tests=(
 for name in "${all_tests[@]}"; do
   should_run "$name" || continue
   if "$name"; then
-    if [[ $name != test_unit_self_heal && $LAST_RC -ne 124 ]]; then
+    if [[ $name != test_unit_self_heal && $name != test_unit_startup_ordering && $LAST_RC -ne 124 ]]; then
       echo "FAIL $name (script exited, rc=$LAST_RC)"
       fail=$((fail + 1))
       failed+=("$name")
