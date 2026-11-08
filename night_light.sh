@@ -491,7 +491,11 @@ night_light_enabled() {
 }
 # toggle color scheme
 color_scheme_toggle() {
-  gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"
+  if ! gsettings set org.gnome.desktop.interface color-scheme "prefer-$1"; then
+    log "color-scheme set failed: $1"
+    return 1
+  fi
+  log "color scheme $1"
 }
 # toggle do not disturb
 dnd_toggle() {
@@ -514,10 +518,16 @@ sync_night_light_schedule() {
 
 auto-run() {
   local loop_count=0
+  local loop_sleep=60
   local schedule_synced=0
   while true
   do
     loop_count=$((loop_count + 1))
+    if (( loop_count <= 24 )); then
+      loop_sleep=5
+    else
+      loop_sleep=60
+    fi
     if [[ -z ${yr_location_position_lat:-} || -z ${yr_location_position_lon:-} ]]; then
       if (( loop_count % 5 == 1 )); then
         load_location || true
@@ -532,7 +542,7 @@ auto-run() {
         log "sun times unavailable"
         sun_warned=1
       fi
-      sleep 60
+      sleep "$loop_sleep"
       continue
     fi
     if [[ $schedule_synced != 1 ]]; then
@@ -541,9 +551,15 @@ auto-run() {
     fi
 
     get_color_scheme=$(
-      [[ $(gsettings get org.gnome.desktop.interface color-scheme) =~ "dark" ]] &&
-      echo dark ||
-    echo light)
+      if ! scheme=$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null); then
+        log "color-scheme read failed"
+        echo light
+      elif [[ $scheme =~ dark ]]; then
+        echo dark
+      else
+        echo light
+      fi
+    )
     toggle_dark() {
       if [[ ! $get_color_scheme == "dark" ]]
       then
@@ -593,7 +609,7 @@ auto-run() {
         night_light_temperature "$1"
         echo "Temperature set to ($1)"
       fi
-      sleep 60
+      sleep "$loop_sleep"
     }
 
     re='^[0-9]+$'   # regex for valid numbers
@@ -681,7 +697,7 @@ auto-run() {
     fi
     # At this stage brightness was set with manual override outside this program
     # or exactly at a testpoint, then it will change next minute so no big deal.
-    sleep 60 # reset brightness once / minute.
+    sleep "$loop_sleep" # reset brightness once per loop.
   done # End of forever loop
 }
 

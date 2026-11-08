@@ -53,6 +53,7 @@ make_home() {
   : > "$home/curl.log"
   : > "$home/lynx.log"
   : > "$home/gsettings.log"
+  : > "$home/sleep.log"
   CASE_HOME=$home
 }
 
@@ -71,6 +72,7 @@ run_case() {
     CURL_FAIL_ONCE="${CURL_FAIL_ONCE:-}" CURL_EMPTY_MATCH="${CURL_EMPTY_MATCH:-}" \
     CURL_304="${CURL_304:-}" \
     CURL_LOG="$home/curl.log" LYNX_LOG="$home/lynx.log" \
+    SLEEP_LOG="$home/sleep.log" \
     GS_STATE="$home/state" GS_LOG="$home/gsettings.log" \
     bash "$repo/night_light.sh" -ar > "$home/out.log" 2> "$home/err.log"
   LAST_RC=$?
@@ -477,6 +479,24 @@ test_full_ramp_startup_sync() {
   assert_alive || return 1
 }
 
+test_startup_grace() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 20:30' +%s)" "'prefer-light'"
+  local first
+  first=$(head -1 "$CASE_HOME/sleep.log" 2>/dev/null)
+  if [[ $first != 5 ]]; then
+    echo "  expected first sleep 5, got ${first:-empty}" >&2
+    return 1
+  fi
+  assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-dark" || return 1
+  assert_alive || return 1
+}
+
+test_mode_change_log() {
+  run_case "$FUNCNAME" "$(date -d '2026-11-04 20:30' +%s)" "'prefer-light'"
+  assert_contains "$CASE_HOME/.night_light/night_light.log" "color scheme dark" || return 1
+  assert_alive || return 1
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -512,6 +532,8 @@ all_tests=(
   test_full_ramp_dark
   test_full_ramp_schedule
   test_full_ramp_startup_sync
+  test_startup_grace
+  test_mode_change_log
 )
 
 for name in "${all_tests[@]}"; do

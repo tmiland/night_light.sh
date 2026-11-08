@@ -1,2 +1,5 @@
 #!/bin/bash
+if [[ -n ${SLEEP_LOG:-} ]]; then
+  printf '%s\n' "$*" >> "$SLEEP_LOG"
+fi
 /bin/sleep 0.05
