@@ -500,6 +500,7 @@ color_scheme_toggle() {
 # toggle do not disturb
 dnd_toggle() {
   gsettings set org.gnome.desktop.notifications show-banners "$1"
+  gsettings set org.gnome.desktop.sound event-sounds "$1"
 }
 
 # Put together in a function E.G: 17:55 turns into 17.916666666

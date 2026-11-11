@@ -497,6 +497,20 @@ test_mode_change_log() {
   assert_alive || return 1
 }
 
+test_dnd_sound_toggle() {
+  run_case dnd_dark "$(date -d '2026-11-04 20:30' +%s)" "'prefer-light'"
+  assert_contains "$CASE_HOME/gsettings.log" "show-banners false" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "event-sounds false" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-dark" || return 1
+  assert_alive || return 1
+
+  run_case dnd_light "$(date -d '2026-11-04 09:00' +%s)" "'prefer-dark'"
+  assert_contains "$CASE_HOME/gsettings.log" "show-banners true" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "event-sounds true" || return 1
+  assert_contains "$CASE_HOME/gsettings.log" "color-scheme prefer-light" || return 1
+  assert_alive || return 1
+}
+
 all_tests=(
   test_uses_sunrise_api
   test_uses_forecast_api
@@ -534,6 +548,7 @@ all_tests=(
   test_full_ramp_startup_sync
   test_startup_grace
   test_mode_change_log
+  test_dnd_sound_toggle
 )
 
 for name in "${all_tests[@]}"; do
